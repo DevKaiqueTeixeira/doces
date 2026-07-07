@@ -1,22 +1,19 @@
 <template>
   <main class="login-page">
-    <div class="login-orb"></div>
+    <div class="login-glow login-glow--top"></div>
+    <div class="login-glow login-glow--bottom"></div>
 
     <QCard flat class="login-card">
       <QCardSection class="login-card__header">
-        <div class="login-card__media">
-          <div class="login-card__media-topfade"></div>
-          <div class="login-card__media-glow"></div>
-          <img :src="logoJessy" alt="Jessy Doces" class="login-card__logo" />
-          <div class="login-card__media-shine"></div>
+        <div class="login-brand" aria-label="Jessy Doces">
+          <span class="login-brand__jessy">Jessy</span>
+          <span class="login-brand__doces">Doces</span>
         </div>
 
         <span class="login-card__eyebrow">Acesso interno</span>
-        <h1>Painel de acesso</h1>
-        <p>Entre com um dos usuarios cadastrados para acessar os pedidos e registrar as acoes do sistema.</p>
       </QCardSection>
 
-      <QCardSection>
+      <QCardSection class="login-card__body">
         <QForm ref="formRef" class="login-form" @submit.prevent="handleSubmit">
           <BaseInput
             v-model="form.nome"
@@ -39,8 +36,6 @@
             :disabled="isLoading"
           />
 
-          <p class="login-form__helper">Use um dos acessos internos cadastrados no Supabase.</p>
-
           <BaseButton
             label="Entrar"
             type="submit"
@@ -60,7 +55,6 @@ import { storeToRefs } from 'pinia'
 import { QCard, QCardSection, QForm, useQuasar } from 'quasar'
 import { useRoute, useRouter } from 'vue-router'
 
-import logoJessy from '../assets/jessyDoces.png'
 import BaseButton from '../components/base/BaseButton.vue'
 import BaseInput from '../components/base/BaseInput.vue'
 import { useAuthStore } from '../stores/auth'
@@ -141,7 +135,12 @@ async function handleSubmit() {
 </script>
 
 <style scoped>
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Manrope:wght@500;600;700;800&family=Parisienne&display=swap');
+
 .login-page {
+  --login-display-font: 'Cormorant Garamond', Georgia, serif;
+  --login-script-font: 'Parisienne', cursive;
+  --login-sans-font: 'Manrope', Inter, system-ui, sans-serif;
   min-height: 100vh;
   padding: 24px;
   display: flex;
@@ -149,157 +148,145 @@ async function handleSubmit() {
   justify-content: center;
   position: relative;
   overflow: hidden;
-  background:
-    radial-gradient(circle at top, rgba(192, 132, 252, 0.18), transparent 35%),
-    radial-gradient(circle at bottom, rgba(91, 33, 182, 0.2), transparent 30%),
-    linear-gradient(180deg, #34114d 0%, #1a072a 100%);
+  background: linear-gradient(180deg, #3a1457 0%, #220a34 100%);
 }
 
-.login-orb {
-  width: 700px;
-  height: 700px;
+.login-glow {
   position: absolute;
   border-radius: 50%;
-  background: radial-gradient(
-    circle,
-    rgba(216, 180, 254, 0.95) 0%,
-    rgba(192, 132, 252, 0.6) 45%,
-    rgba(192, 132, 252, 0) 72%
-  );
   filter: blur(18px);
-  opacity: 0.78;
+  opacity: 0.72;
+}
+
+.login-glow--top {
+  top: -120px;
+  left: -80px;
+  width: 320px;
+  height: 320px;
+  background: radial-gradient(circle, rgba(233, 213, 255, 0.54), rgba(233, 213, 255, 0));
+}
+
+.login-glow--bottom {
+  right: -100px;
+  bottom: -140px;
+  width: 380px;
+  height: 380px;
+  background: radial-gradient(circle, rgba(192, 132, 252, 0.42), rgba(192, 132, 252, 0));
 }
 
 .login-card {
-  width: min(100%, 430px);
+  width: min(100%, 440px);
   position: relative;
   z-index: 1;
-  padding: 16px;
+  overflow: hidden;
   border-radius: 32px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(255, 255, 255, 0.92));
-  box-shadow: 0 30px 80px rgba(20, 5, 33, 0.38);
-  backdrop-filter: blur(10px);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(250, 245, 255, 0.94));
+  box-shadow: 0 32px 80px rgba(20, 5, 33, 0.34);
+  border: 1px solid rgba(233, 213, 255, 0.8);
+  font-family: var(--login-sans-font);
+}
+
+.login-card::before,
+.login-card::after {
+  content: '';
+  position: absolute;
+  top: 18px;
+  bottom: 18px;
+  width: 8px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(216, 180, 254, 0.2), rgba(147, 51, 234, 0.95), rgba(216, 180, 254, 0.22));
+  box-shadow: 0 0 18px rgba(168, 85, 247, 0.22);
+}
+
+.login-card::before {
+  left: 14px;
+}
+
+.login-card::after {
+  right: 14px;
 }
 
 .login-card__header {
+  padding: 36px 42px 12px;
   text-align: center;
-  padding-bottom: 10px;
 }
 
-.login-card__media {
-  position: relative;
-  height: 186px;
-  margin: -6px -6px 22px;
-  border-radius: 24px;
-  overflow: hidden;
-  background:
-    linear-gradient(180deg, rgba(88, 28, 135, 0.98), rgba(59, 7, 100, 0.98)),
-    radial-gradient(circle at top, rgba(233, 213, 255, 0.52), transparent 45%);
+.login-brand {
+  display: grid;
+  gap: 0;
+  justify-items: center;
+  margin-bottom: 16px;
+  color: #5b1f87;
 }
 
-.login-card__media-topfade {
-  position: absolute;
-  inset: 0 0 auto;
-  height: 72px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.1), transparent);
-  z-index: 1;
+.login-brand__jessy {
+  font-family: var(--login-script-font);
+  font-size: clamp(3rem, 8vw, 4.5rem);
+  line-height: 0.82;
+  letter-spacing: 0.01em;
+  color: #8b36d8;
+  text-shadow: 0 8px 24px rgba(168, 85, 247, 0.18);
 }
 
-.login-card__media-glow {
-  position: absolute;
-  left: 50%;
-  bottom: 18px;
-  width: 270px;
-  height: 110px;
-  transform: translateX(-50%);
-  border-radius: 999px;
-  background: radial-gradient(circle, rgba(216, 180, 254, 0.75), rgba(216, 180, 254, 0));
-  filter: blur(18px);
-  opacity: 0.95;
-}
-
-.login-card__media-shine {
-  position: absolute;
-  top: 14px;
-  left: -40px;
-  width: 140px;
-  height: 220px;
-  transform: rotate(18deg);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0));
-  filter: blur(8px);
-}
-
-.login-card__logo {
-  position: absolute;
-  left: 50%;
-  bottom: 12px;
-  width: min(100%, 320px);
-  height: 132px;
-  transform: translateX(-50%);
-  object-fit: contain;
-  filter: drop-shadow(0 18px 30px rgba(20, 5, 33, 0.48));
-  z-index: 2;
+.login-brand__doces {
+  margin-top: -4px;
+  font-family: var(--login-display-font);
+  font-size: clamp(2rem, 5vw, 2.7rem);
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #4c1779;
 }
 
 .login-card__eyebrow {
   display: inline-flex;
   margin-bottom: 10px;
-  text-transform: uppercase;
-  letter-spacing: 0.22em;
-  font-size: 0.7rem;
+  color: #a855f7;
+  font-size: 0.72rem;
   font-weight: 700;
-  color: #9333ea;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
 }
 
-.login-card h1 {
-  margin: 0 0 10px;
-  color: #3b0764;
-  font-size: clamp(1.8rem, 4.5vw, 2.5rem);
-  font-weight: 800;
-  line-height: 1;
-  letter-spacing: -0.03em;
-}
-
-.login-card p {
-  margin: 0;
-  color: #6b21a8;
-  font-size: 0.94rem;
-  font-weight: 500;
-  line-height: 1.65;
-  max-width: 320px;
-  margin-inline: auto;
+.login-card__body {
+  padding: 18px 42px 36px;
 }
 
 .login-form {
   display: grid;
-  gap: 18px;
-  margin-top: 10px;
+  gap: 20px;
 }
 
-.login-form__helper {
-  margin: -4px 2px 2px;
-  color: #7e22ce;
-  font-size: 0.84rem;
-  line-height: 1.5;
-}
-
-@media (max-width: 960px) {
+@media (max-width: 640px) {
   .login-page {
-    padding: 18px;
+    padding: 16px;
   }
 
-  .login-orb {
-    width: 420px;
-    height: 420px;
+  .login-card {
+    border-radius: 26px;
   }
 
-  .login-card__media {
-    height: 154px;
+  .login-card::before,
+  .login-card::after {
+    top: 14px;
+    bottom: 14px;
+    width: 6px;
   }
 
-  .login-card__logo {
-    width: min(100%, 260px);
-    height: 110px;
+  .login-card::before {
+    left: 10px;
+  }
+
+  .login-card::after {
+    right: 10px;
+  }
+
+  .login-card__header {
+    padding: 28px 28px 8px;
+  }
+
+  .login-card__body {
+    padding: 16px 28px 26px;
   }
 }
 </style>

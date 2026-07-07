@@ -94,11 +94,13 @@ const currentType = computed(() => {
 <style scoped>
 .base-input {
   width: 100%;
+  font-family: var(--login-sans-font, Inter, system-ui, sans-serif);
 }
 
 .base-input__field {
   color: #3b0764;
   font-weight: 600;
+  font-family: var(--login-sans-font, Inter, system-ui, sans-serif);
 }
 
 .base-input__action {
@@ -116,6 +118,11 @@ const currentType = computed(() => {
   min-height: 58px;
 }
 
+.base-input:deep(.q-field__control::before),
+.base-input:deep(.q-field__control::after) {
+  display: none;
+}
+
 .base-input:deep(.q-field__native),
 .base-input:deep(.q-field__input) {
   padding-top: 18px;
@@ -124,10 +131,13 @@ const currentType = computed(() => {
 .base-input:deep(.q-field__label) {
   color: #7e22ce;
   font-weight: 600;
+  font-family: var(--login-sans-font, Inter, system-ui, sans-serif);
+  letter-spacing: -0.01em;
 }
 
 .base-input:deep(.q-placeholder) {
   color: #a78bfa;
   opacity: 1;
+  font-family: var(--login-sans-font, Inter, system-ui, sans-serif);
 }
 </style>

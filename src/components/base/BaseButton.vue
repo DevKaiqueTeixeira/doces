@@ -41,9 +41,10 @@ withDefaults(
   min-height: 54px;
   border-radius: 18px;
   background: linear-gradient(135deg, #c084fc 0%, #9333ea 100%);
-  font-size: 1rem;
+  font-family: var(--login-sans-font, Inter, system-ui, sans-serif);
+  font-size: 0.98rem;
   font-weight: 700;
-  letter-spacing: 0.01em;
+  letter-spacing: 0.08em;
   transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
 }
 
