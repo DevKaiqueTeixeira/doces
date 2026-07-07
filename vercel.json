@@ -1,16 +1,21 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "routes": [
+  "rewrites": [
     {
-      "src": "^/api/(.*)$",
-      "dest": "/api/$1"
+      "source": "/login",
+      "destination": "/"
     },
     {
-      "handle": "filesystem"
+      "source": "/home",
+      "destination": "/"
     },
     {
-      "src": "/.*",
-      "dest": "/index.html"
+      "source": "/produtos",
+      "destination": "/"
+    },
+    {
+      "source": "/pedidos",
+      "destination": "/"
     }
   ]
 }
