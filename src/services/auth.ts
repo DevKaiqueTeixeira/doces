@@ -1,13 +1,19 @@
-import type { LoginCredentials, LoginResponse } from '../types/auth'
+import type { LoginCredentials, LoginResponse, VerifySessionResponse } from '../types/auth'
 
 const apiUrl = import.meta.env.VITE_API_URL ?? 'http://localhost:3333'
 
-function getErrorMessage(payload: LoginResponse | { message?: string } | null) {
+function getErrorMessage(payload: LoginResponse | VerifySessionResponse | { message?: string } | null) {
   if (payload && 'message' in payload && typeof payload.message === 'string') {
     return payload.message
   }
 
   return 'Nao foi possivel autenticar o usuario.'
+}
+
+function createAuthHeaders(token: string) {
+  return {
+    Authorization: `Bearer ${token}`,
+  }
 }
 
 export async function loginWithPassword(credentials: LoginCredentials) {
@@ -28,9 +34,30 @@ export async function loginWithPassword(credentials: LoginCredentials) {
     throw new Error(getErrorMessage(payload))
   }
 
-  if (!payload || !('user' in payload)) {
+  if (!payload || !('user' in payload) || !('token' in payload)) {
     throw new Error('Resposta de login invalida.')
   }
 
-  return payload.user
+  return payload
+}
+
+export async function verifySessionToken(token: string) {
+  const response = await fetch(`${apiUrl}/auth/session`, {
+    headers: createAuthHeaders(token),
+  })
+
+  const payload = (await response.json().catch(() => null)) as
+    | VerifySessionResponse
+    | { message?: string }
+    | null
+
+  if (!response.ok) {
+    throw new Error(getErrorMessage(payload))
+  }
+
+  if (!payload || !('user' in payload)) {
+    throw new Error('Resposta de sessao invalida.')
+  }
+
+  return payload
 }

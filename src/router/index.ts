@@ -10,10 +10,14 @@ export function createAppRouter(pinia: Pinia) {
     routes,
   })
 
-  router.beforeEach((to) => {
+  router.beforeEach(async (to) => {
     const authStore = useAuthStore(pinia)
 
-    if (to.meta.requiresAuth && !authStore.isAuthenticated) {
+    authStore.hydrate()
+
+    const hasValidSession = await authStore.ensureValidSession()
+
+    if (to.meta.requiresAuth && !hasValidSession) {
       return {
         name: 'login',
         query: {
@@ -22,9 +26,9 @@ export function createAppRouter(pinia: Pinia) {
       }
     }
 
-    if (to.meta.guestOnly && authStore.isAuthenticated) {
+    if (to.meta.guestOnly && hasValidSession) {
       return {
-        name: 'dashboard',
+        name: 'home',
       }
     }
 

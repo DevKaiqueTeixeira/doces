@@ -1,13 +1,17 @@
 import type { RouteRecordRaw } from 'vue-router'
 
-import DashboardPage from '../pages/DashboardPage.vue'
+import HomePage from '../pages/HomePage.vue'
 import LoginPage from '../pages/LoginPage.vue'
 
 export const routes: RouteRecordRaw[] = [
   {
     path: '/',
-    name: 'dashboard',
-    component: DashboardPage,
+    redirect: '/home',
+  },
+  {
+    path: '/home',
+    name: 'home',
+    component: HomePage,
     meta: {
       requiresAuth: true,
     },
