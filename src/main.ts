@@ -1,7 +1,8 @@
-import { Quasar } from 'quasar'
+import { Notify, Quasar } from 'quasar'
 import { createPinia } from 'pinia'
 import { createApp } from 'vue'
 
+import '@quasar/extras/material-icons/material-icons.css'
 import 'quasar/dist/quasar.css'
 
 import './style.css'
@@ -17,6 +18,9 @@ useAuthStore(pinia).hydrate()
 
 app.use(pinia)
 app.use(Quasar, {
+  plugins: {
+    Notify,
+  },
   config: {
     brand: {
       primary: '#7c3aed',
