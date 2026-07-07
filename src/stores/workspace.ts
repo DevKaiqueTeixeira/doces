@@ -1,6 +1,8 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 
+import { getSupabasePublicEnv, hasSupabasePublicConfig } from '../lib/supabase'
+
 const phases = [
   {
     title: 'Vue como shell principal',
@@ -24,6 +26,8 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   const phaseIndex = ref(0)
   const apiStatus = ref<ApiStatus>('idle')
   const apiMessage = ref('Clique em verificar API para testar o backend local.')
+  const supabaseStatus = ref<ApiStatus>('idle')
+  const supabaseMessage = ref('Clique em verificar Supabase para validar a configuracao publica.')
 
   const currentPhase = computed(() => phases[phaseIndex.value])
 
@@ -52,13 +56,46 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     }
   }
 
+  async function checkSupabase() {
+    supabaseStatus.value = 'loading'
+
+    if (!hasSupabasePublicConfig()) {
+      supabaseStatus.value = 'offline'
+      supabaseMessage.value = 'As variaveis publicas do Supabase nao foram encontradas.'
+      return
+    }
+
+    try {
+      const { supabasePublishableKey, supabaseUrl } = getSupabasePublicEnv()
+      const response = await fetch(`${supabaseUrl}/auth/v1/settings`, {
+        headers: {
+          apikey: supabasePublishableKey,
+        },
+      })
+
+      if (!response.ok) {
+        throw new Error('Nao foi possivel validar a configuracao publica do Supabase.')
+      }
+
+      supabaseStatus.value = 'online'
+      supabaseMessage.value = 'Supabase publico configurado e acessivel pelo frontend.'
+    } catch (error) {
+      supabaseStatus.value = 'offline'
+      supabaseMessage.value =
+        error instanceof Error ? error.message : 'Falha ao validar o Supabase publico.'
+    }
+  }
+
   return {
     apiMessage,
     apiStatus,
+    checkSupabase,
     currentPhase,
     phaseIndex,
     phases,
     stack,
+    supabaseMessage,
+    supabaseStatus,
     checkApi,
     nextPhase,
   }

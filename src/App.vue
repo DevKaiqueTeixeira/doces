@@ -7,7 +7,8 @@ import ReactIsland from './components/ReactIsland.vue'
 import { useWorkspaceStore } from './stores/workspace'
 
 const workspaceStore = useWorkspaceStore()
-const { apiMessage, apiStatus, currentPhase, phaseIndex, stack } = storeToRefs(workspaceStore)
+const { apiMessage, apiStatus, currentPhase, phaseIndex, stack, supabaseMessage, supabaseStatus } =
+  storeToRefs(workspaceStore)
 const apiUrl = import.meta.env.VITE_API_URL ?? 'http://localhost:3333'
 
 const statusColor = computed(() => {
@@ -42,8 +43,41 @@ const statusLabel = computed(() => {
   return 'API pendente'
 })
 
+const supabaseColor = computed(() => {
+  if (supabaseStatus.value === 'online') {
+    return 'positive'
+  }
+
+  if (supabaseStatus.value === 'loading') {
+    return 'warning'
+  }
+
+  if (supabaseStatus.value === 'offline') {
+    return 'negative'
+  }
+
+  return 'grey-6'
+})
+
+const supabaseLabel = computed(() => {
+  if (supabaseStatus.value === 'online') {
+    return 'Supabase online'
+  }
+
+  if (supabaseStatus.value === 'loading') {
+    return 'Verificando Supabase'
+  }
+
+  if (supabaseStatus.value === 'offline') {
+    return 'Supabase offline'
+  }
+
+  return 'Supabase pendente'
+})
+
 onMounted(() => {
   void workspaceStore.checkApi()
+  void workspaceStore.checkSupabase()
 })
 </script>
 
@@ -66,7 +100,7 @@ onMounted(() => {
           </div>
         </section>
 
-        <section class="content-grid">
+        <section class="content-grid content-grid--triple">
           <QCard flat bordered class="overview-card">
             <QCardSection>
               <span class="section-label">Etapa atual</span>
@@ -97,6 +131,29 @@ onMounted(() => {
             <QCardSection class="actions-row">
               <span>Endpoint padrao: {{ apiUrl }}</span>
               <QBtn color="secondary" text-color="dark" unelevated label="Verificar API" @click="workspaceStore.checkApi" />
+            </QCardSection>
+          </QCard>
+
+          <QCard flat bordered class="overview-card">
+            <QCardSection>
+              <span class="section-label">Supabase publico</span>
+              <div class="status-row">
+                <h2>{{ supabaseLabel }}</h2>
+                <QChip :color="supabaseColor" text-color="white">{{ supabaseStatus }}</QChip>
+              </div>
+              <p>{{ supabaseMessage }}</p>
+            </QCardSection>
+
+            <QSeparator dark />
+
+            <QCardSection class="actions-row">
+              <span>Projeto: gczudwenlrrynxorpuyn</span>
+              <QBtn
+                color="accent"
+                unelevated
+                label="Verificar Supabase"
+                @click="workspaceStore.checkSupabase"
+              />
             </QCardSection>
           </QCard>
         </section>

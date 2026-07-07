@@ -3,7 +3,12 @@ import 'dotenv/config'
 import cors from 'cors'
 import express, { type Request, type Response } from 'express'
 
-import { getSupabaseAdmin, hasSupabaseConfig } from './supabase.js'
+import {
+  getSupabaseProbeConfig,
+  getSupabaseQueryClient,
+  hasSupabaseAdminConfig,
+  hasSupabasePublicConfig,
+} from './supabase.js'
 
 const app = express()
 const port = Number(process.env.PORT ?? 3333)
@@ -20,23 +25,34 @@ app.get('/health', (_request: Request, response: Response) => {
 })
 
 app.get('/supabase/status', async (_request: Request, response: Response) => {
-  if (!hasSupabaseConfig()) {
+  if (!hasSupabasePublicConfig()) {
     response.status(500).json({
       connected: false,
-      message: 'Preencha SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY no .env.',
+      message: 'Preencha NEXT_PUBLIC_SUPABASE_URL e NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY no .env.',
     })
     return
   }
 
   try {
-    const supabase = getSupabaseAdmin()
-    const { error } = await supabase.auth.admin.listUsers({ page: 1, perPage: 1 })
+    const { key, mode, url } = getSupabaseProbeConfig()
+    const probeResponse = await fetch(`${url}/auth/v1/settings`, {
+      headers: {
+        apikey: key,
+      },
+    })
 
-    if (error) {
-      throw error
+    if (!probeResponse.ok) {
+      throw new Error('Supabase respondeu com erro na validacao.')
     }
 
-    response.json({ connected: true, message: 'Supabase conectado com sucesso.' })
+    response.json({
+      connected: true,
+      mode,
+      message:
+        mode === 'admin'
+          ? 'Supabase conectado com service role.'
+          : 'Supabase conectado com chave publica. Rotas administrativas continuam indisponiveis.',
+    })
   } catch (error) {
     response.status(500).json({
       connected: false,
@@ -46,7 +62,7 @@ app.get('/supabase/status', async (_request: Request, response: Response) => {
 })
 
 app.get('/projects', async (_request: Request, response: Response) => {
-  if (!hasSupabaseConfig()) {
+  if (!hasSupabasePublicConfig()) {
     response.status(500).json({
       message: 'Configure o Supabase antes de consultar projetos.',
     })
@@ -54,14 +70,17 @@ app.get('/projects', async (_request: Request, response: Response) => {
   }
 
   try {
-    const supabase = getSupabaseAdmin()
+    const supabase = getSupabaseQueryClient()
     const { data, error } = await supabase.from('projects').select('*').limit(10)
 
     if (error) {
       throw error
     }
 
-    response.json(data)
+    response.json({
+      data,
+      mode: hasSupabaseAdminConfig() ? 'admin' : 'public',
+    })
   } catch (error) {
     response.status(500).json({
       message: error instanceof Error ? error.message : 'Falha ao buscar projetos.',
