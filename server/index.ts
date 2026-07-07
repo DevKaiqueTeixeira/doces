@@ -24,6 +24,25 @@ type AuthenticatedRequest = Request & {
   authUser?: AuthenticatedUser
 }
 
+type ParsedOrderItem = {
+  produtoId: string
+  quantidade: number
+}
+
+type ProductRow = {
+  id: string
+  nome: string
+  preco: number
+}
+
+type OrderInsertItem = {
+  produto_id: string
+  produto_nome: string
+  quantidade: number
+  preco_unitario: number
+  subtotal: number
+}
+
 function getAuthTokenSecret() {
   const secret = process.env.AUTH_TOKEN_SECRET ?? process.env.SUPABASE_SECRET_KEY
 
@@ -115,6 +134,57 @@ function formatProduto(produto: {
     preco: Number(produto.preco),
     createdAt: produto.created_at,
     updatedAt: produto.updated_at,
+  }
+}
+
+function parseOrderPayload(body: Request['body']) {
+  const clienteNome = typeof body?.clienteNome === 'string' ? body.clienteNome.trim() : ''
+  const formaPagamento = body?.formaPagamento === 'aberto' || body?.formaPagamento === 'avista' ? body.formaPagamento : ''
+  const itens = Array.isArray(body?.itens) ? body.itens : []
+
+  if (!clienteNome) {
+    throw new Error('Informe o nome do cliente.')
+  }
+
+  if (!formaPagamento) {
+    throw new Error('Informe como o pedido deve ser salvo.')
+  }
+
+  if (!itens.length) {
+    throw new Error('Selecione pelo menos um produto para o pedido.')
+  }
+
+  const normalizedItems = itens
+    .map((item: Record<string, unknown>) => ({
+      produtoId: typeof item.produtoId === 'string' ? item.produtoId : '',
+      quantidade: Number(item.quantidade),
+    }))
+    .filter((item: ParsedOrderItem) => item.produtoId && Number.isInteger(item.quantidade) && item.quantidade > 0)
+
+  if (!normalizedItems.length) {
+    throw new Error('Os itens do pedido estao invalidos.')
+  }
+
+  return {
+    clienteNome,
+    formaPagamento,
+    itens: normalizedItems,
+  }
+}
+
+function formatPedido(pedido: {
+  id: string
+  cliente_nome: string
+  forma_pagamento: 'aberto' | 'avista'
+  total: number
+  created_at: string
+}) {
+  return {
+    id: pedido.id,
+    clienteNome: pedido.cliente_nome,
+    formaPagamento: pedido.forma_pagamento,
+    total: Number(pedido.total),
+    createdAt: pedido.created_at,
   }
 }
 
@@ -319,6 +389,96 @@ app.delete('/produtos/:id', requireAuth, async (request: AuthenticatedRequest, r
   } catch (error) {
     response.status(400).json({
       message: error instanceof Error ? error.message : 'Falha ao excluir produto.',
+    })
+  }
+})
+
+app.post('/pedidos', requireAuth, async (request: AuthenticatedRequest, response: Response) => {
+  try {
+    const payload = parseOrderPayload(request.body)
+    const authUser = request.authUser
+
+    if (!authUser) {
+      response.status(401).json({
+        message: 'Sessao nao encontrada.',
+      })
+      return
+    }
+
+    const supabase = getSupabaseAdmin()
+    const productIds = payload.itens.map((item: ParsedOrderItem) => item.produtoId)
+    const { data: products, error: productsError } = await supabase
+      .from('produtos')
+      .select('id, nome, preco')
+      .in('id', productIds)
+
+    if (productsError) {
+      throw productsError
+    }
+
+    const productsMap = new Map((products ?? []).map((product: ProductRow) => [product.id, product]))
+
+    if (productsMap.size !== productIds.length) {
+      throw new Error('Um ou mais produtos do pedido nao foram encontrados.')
+    }
+
+    const itemsToInsert = payload.itens.map((item: ParsedOrderItem): OrderInsertItem => {
+      const product = productsMap.get(item.produtoId)
+
+      if (!product) {
+        throw new Error('Produto nao encontrado para o pedido.')
+      }
+
+      const precoUnitario = Number(product.preco)
+      const subtotal = Number((precoUnitario * item.quantidade).toFixed(2))
+
+      return {
+        produto_id: product.id,
+        produto_nome: product.nome,
+        quantidade: item.quantidade,
+        preco_unitario: precoUnitario,
+        subtotal,
+      }
+    })
+
+    const total = Number(itemsToInsert.reduce((sum: number, item: OrderInsertItem) => sum + item.subtotal, 0).toFixed(2))
+    const now = new Date().toISOString()
+
+    const { data: createdOrder, error: orderError } = await supabase
+      .from('pedidos')
+      .insert({
+        cliente_nome: payload.clienteNome,
+        forma_pagamento: payload.formaPagamento,
+        total,
+        usuario_id: authUser.id,
+        usuario_nome: authUser.nome,
+        updated_at: now,
+      })
+      .select('id, cliente_nome, forma_pagamento, total, created_at')
+      .single()
+
+    if (orderError) {
+      throw orderError
+    }
+
+    const { error: itemsError } = await supabase.from('pedido_itens').insert(
+      itemsToInsert.map((item: OrderInsertItem) => ({
+        ...item,
+        pedido_id: createdOrder.id,
+      })),
+    )
+
+    if (itemsError) {
+      await supabase.from('pedidos').delete().eq('id', createdOrder.id)
+      throw itemsError
+    }
+
+    response.status(201).json({
+      pedido: formatPedido(createdOrder),
+    })
+  } catch (error) {
+    response.status(400).json({
+      message: error instanceof Error ? error.message : 'Falha ao cadastrar pedido.',
     })
   }
 })
