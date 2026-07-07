@@ -25,6 +25,7 @@
               autocomplete="off"
               :disabled="saving"
               :rules="clientNameRules"
+              class="order-client-input"
             />
 
             <section class="products-picker">
@@ -302,6 +303,26 @@ async function handleLogout() {
 .order-card__body {
   display: grid;
   gap: 18px;
+}
+
+.order-client-input:deep(.q-field__label) {
+  color: #9333ea;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.order-client-input:deep(.q-field__native),
+.order-client-input:deep(.q-field__input) {
+  color: #5b21b6;
+  font-weight: 600;
+}
+
+.order-client-input:deep(.q-field__prepend .q-icon) {
+  color: #a855f7;
+}
+
+.order-client-input:deep(.q-placeholder) {
+  color: #c084fc;
 }
 
 .products-picker {
