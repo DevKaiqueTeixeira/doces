@@ -2,6 +2,7 @@ import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 
 import { getSupabasePublicEnv, hasSupabasePublicConfig } from '../lib/supabase'
+import { apiUrl } from '../services/api'
 
 const phases = [
   {
@@ -39,8 +40,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     apiStatus.value = 'loading'
 
     try {
-      const baseUrl = import.meta.env.VITE_API_URL ?? 'http://localhost:3333'
-      const response = await fetch(`${baseUrl}/health`)
+      const response = await fetch(`${apiUrl}/health`)
 
       if (!response.ok) {
         throw new Error('A API respondeu com erro.')

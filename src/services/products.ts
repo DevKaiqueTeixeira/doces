@@ -1,6 +1,5 @@
 import type { ProductListResponse, ProductPayload, ProductResponse } from '../types/products'
-
-const apiUrl = import.meta.env.VITE_API_URL ?? 'http://localhost:3333'
+import { apiUrl } from './api'
 
 function getErrorMessage(payload: { message?: string } | ProductListResponse | ProductResponse | null) {
   if (payload && 'message' in payload && typeof payload.message === 'string') {

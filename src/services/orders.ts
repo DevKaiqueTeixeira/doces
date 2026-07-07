@@ -4,8 +4,7 @@ import type {
   OrderResponse,
   UpdateOrderItemsPayload,
 } from '../types/orders'
-
-const apiUrl = import.meta.env.VITE_API_URL ?? 'http://localhost:3333'
+import { apiUrl } from './api'
 
 function getErrorMessage(payload: { message?: string } | OrderResponse | OrderListResponse | null) {
   if (payload && 'message' in payload && typeof payload.message === 'string') {

@@ -1,6 +1,5 @@
 import type { LoginCredentials, LoginResponse, VerifySessionResponse } from '../types/auth'
-
-const apiUrl = import.meta.env.VITE_API_URL ?? 'http://localhost:3333'
+import { apiUrl } from './api'
 
 function getErrorMessage(payload: LoginResponse | VerifySessionResponse | { message?: string } | null) {
   if (payload && 'message' in payload && typeof payload.message === 'string') {
