@@ -4,71 +4,49 @@
 
     <QCard flat class="login-card">
       <QCardSection class="login-card__header">
-        <div class="login-card__icon-shell">
-          <QIcon name="storefront" size="32px" color="primary" />
+        <div class="login-card__media">
+          <div class="login-card__media-topfade"></div>
+          <div class="login-card__media-glow"></div>
+          <img :src="logoJessy" alt="Jessy Doces" class="login-card__logo" />
+          <div class="login-card__media-shine"></div>
         </div>
 
         <span class="login-card__eyebrow">Acesso interno</span>
-        <h1>jessy doces</h1>
-        <p>Entre com um dos usuarios cadastrados para acessar o painel.</p>
+        <h1>Painel de acesso</h1>
+        <p>Entre com um dos usuarios cadastrados para acessar os pedidos e registrar as acoes do sistema.</p>
       </QCardSection>
 
       <QCardSection>
         <QForm ref="formRef" class="login-form" @submit.prevent="handleSubmit">
-          <QInput
+          <BaseInput
             v-model="form.nome"
-            outlined
             label="Usuario"
+            icon="person_outline"
+            placeholder="Digite seu usuario"
             autocomplete="username"
-            color="primary"
-            bg-color="white"
-            input-class="login-input__field"
-            lazy-rules="ondemand"
             :rules="usuarioRules"
-          >
-            <template #prepend>
-              <QIcon name="person_outline" color="primary" />
-            </template>
-          </QInput>
+            :disabled="isLoading"
+          />
 
-          <QInput
+          <BaseInput
             v-model="form.senha"
-            outlined
+            type="password"
             label="Senha"
-            :type="showPassword ? 'text' : 'password'"
+            icon="key"
+            placeholder="Digite sua senha"
             autocomplete="current-password"
-            color="primary"
-            bg-color="white"
-            input-class="login-input__field"
-            lazy-rules="ondemand"
             :rules="senhaRules"
-          >
-            <template #prepend>
-              <QIcon name="key" color="primary" />
-            </template>
-
-            <template #append>
-              <QIcon
-                :name="showPassword ? 'visibility_off' : 'visibility'"
-                color="primary"
-                class="login-input__action"
-                @click="showPassword = !showPassword"
-              />
-            </template>
-          </QInput>
+            :disabled="isLoading"
+          />
 
           <p class="login-form__helper">Use um dos acessos internos cadastrados no Supabase.</p>
 
-          <QBtn
-            class="login-submit"
-            color="primary"
-            text-color="white"
-            unelevated
-            no-caps
+          <BaseButton
             label="Entrar"
             type="submit"
             icon-right="east"
-            :loading="status === 'loading'"
+            :loading="isLoading"
+            :disabled="!canSubmit"
           />
         </QForm>
       </QCardSection>
@@ -77,11 +55,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
-import { QBtn, QCard, QCardSection, QForm, QIcon, QInput, useQuasar } from 'quasar'
+import { QCard, QCardSection, QForm, useQuasar } from 'quasar'
 import { useRoute, useRouter } from 'vue-router'
 
+import logoJessy from '../assets/jessyDoces.png'
+import BaseButton from '../components/base/BaseButton.vue'
+import BaseInput from '../components/base/BaseInput.vue'
 import { useAuthStore } from '../stores/auth'
 
 const authStore = useAuthStore()
@@ -91,7 +72,6 @@ const router = useRouter()
 const { errorMessage, status } = storeToRefs(authStore)
 
 const formRef = ref<InstanceType<typeof QForm> | null>(null)
-const showPassword = ref(false)
 
 const form = ref({
   nome: '',
@@ -99,14 +79,20 @@ const form = ref({
 })
 
 const usuarioRules = [
-  (value: string | null | undefined) => Boolean(value?.trim()) || 'Informe o usuario',
+  (value: string | number | null | undefined) => Boolean(String(value ?? '').trim()) || 'Informe o usuario',
 ]
 
 const senhaRules = [
-  (value: string | null | undefined) => Boolean(value) || 'Informe a senha',
-  (value: string | null | undefined) =>
-    (value?.length ?? 0) >= 4 || 'A senha precisa ter pelo menos 4 caracteres',
+  (value: string | number | null | undefined) => Boolean(String(value ?? '')) || 'Informe a senha',
+  (value: string | number | null | undefined) =>
+    String(value ?? '').length >= 4 || 'A senha precisa ter pelo menos 4 caracteres',
 ]
+
+const isLoading = computed(() => status.value === 'loading')
+
+const canSubmit = computed(() => {
+  return !isLoading.value && Boolean(form.value.nome.trim()) && Boolean(form.value.senha)
+})
 
 watch(errorMessage, (message) => {
   if (!message) {
@@ -123,6 +109,10 @@ watch(errorMessage, (message) => {
 })
 
 async function handleSubmit() {
+  if (isLoading.value) {
+    return
+  }
+
   const isValid = (await formRef.value?.validate()) ?? false
 
   if (!isValid) {
@@ -160,13 +150,14 @@ async function handleSubmit() {
   position: relative;
   overflow: hidden;
   background:
-    radial-gradient(circle at top, rgba(192, 132, 252, 0.12), transparent 35%),
+    radial-gradient(circle at top, rgba(192, 132, 252, 0.18), transparent 35%),
+    radial-gradient(circle at bottom, rgba(91, 33, 182, 0.2), transparent 30%),
     linear-gradient(180deg, #34114d 0%, #1a072a 100%);
 }
 
 .login-orb {
-  width: 620px;
-  height: 620px;
+  width: 700px;
+  height: 700px;
   position: absolute;
   border-radius: 50%;
   background: radial-gradient(
@@ -180,63 +171,109 @@ async function handleSubmit() {
 }
 
 .login-card {
-  width: min(100%, 420px);
+  width: min(100%, 430px);
   position: relative;
   z-index: 1;
   padding: 16px;
-  border-radius: 30px;
-  background: rgba(255, 255, 255, 0.92);
-  box-shadow: 0 24px 70px rgba(20, 5, 33, 0.34);
+  border-radius: 32px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(255, 255, 255, 0.92));
+  box-shadow: 0 30px 80px rgba(20, 5, 33, 0.38);
+  backdrop-filter: blur(10px);
 }
 
 .login-card__header {
   text-align: center;
-  padding-bottom: 8px;
+  padding-bottom: 10px;
 }
 
-.login-card__icon-shell {
-  width: 64px;
-  height: 64px;
-  margin: 0 auto 18px;
-  display: grid;
-  place-items: center;
-  border-radius: 50%;
-  background: linear-gradient(135deg, rgba(233, 213, 255, 0.95), rgba(216, 180, 254, 0.72));
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65);
+.login-card__media {
+  position: relative;
+  height: 186px;
+  margin: -6px -6px 22px;
+  border-radius: 24px;
+  overflow: hidden;
+  background:
+    linear-gradient(180deg, rgba(88, 28, 135, 0.98), rgba(59, 7, 100, 0.98)),
+    radial-gradient(circle at top, rgba(233, 213, 255, 0.52), transparent 45%);
+}
+
+.login-card__media-topfade {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 72px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.1), transparent);
+  z-index: 1;
+}
+
+.login-card__media-glow {
+  position: absolute;
+  left: 50%;
+  bottom: 18px;
+  width: 270px;
+  height: 110px;
+  transform: translateX(-50%);
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(216, 180, 254, 0.75), rgba(216, 180, 254, 0));
+  filter: blur(18px);
+  opacity: 0.95;
+}
+
+.login-card__media-shine {
+  position: absolute;
+  top: 14px;
+  left: -40px;
+  width: 140px;
+  height: 220px;
+  transform: rotate(18deg);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0));
+  filter: blur(8px);
+}
+
+.login-card__logo {
+  position: absolute;
+  left: 50%;
+  bottom: 12px;
+  width: min(100%, 320px);
+  height: 132px;
+  transform: translateX(-50%);
+  object-fit: contain;
+  filter: drop-shadow(0 18px 30px rgba(20, 5, 33, 0.48));
+  z-index: 2;
 }
 
 .login-card__eyebrow {
   display: inline-flex;
-  margin-bottom: 14px;
+  margin-bottom: 10px;
   text-transform: uppercase;
-  letter-spacing: 0.18em;
-  font-size: 0.72rem;
+  letter-spacing: 0.22em;
+  font-size: 0.7rem;
   font-weight: 700;
   color: #9333ea;
 }
 
 .login-card h1 {
-  margin: 0 0 12px;
+  margin: 0 0 10px;
   color: #3b0764;
-  font-size: clamp(2rem, 5vw, 2.9rem);
+  font-size: clamp(1.8rem, 4.5vw, 2.5rem);
   font-weight: 800;
-  line-height: 0.96;
-  letter-spacing: -0.04em;
-  text-transform: lowercase;
+  line-height: 1;
+  letter-spacing: -0.03em;
 }
 
 .login-card p {
   margin: 0;
   color: #6b21a8;
-  font-size: 0.96rem;
+  font-size: 0.94rem;
   font-weight: 500;
-  line-height: 1.6;
+  line-height: 1.65;
+  max-width: 320px;
+  margin-inline: auto;
 }
 
 .login-form {
   display: grid;
   gap: 18px;
-  margin-top: 8px;
+  margin-top: 10px;
 }
 
 .login-form__helper {
@@ -244,43 +281,6 @@ async function handleSubmit() {
   color: #7e22ce;
   font-size: 0.84rem;
   line-height: 1.5;
-}
-
-.login-input__field {
-  font-weight: 600;
-  color: #3b0764;
-}
-
-.login-input__action {
-  cursor: pointer;
-  transition: transform 0.2s ease, opacity 0.2s ease;
-}
-
-.login-input__action:hover {
-  transform: scale(1.06);
-  opacity: 0.8;
-}
-
-.login-submit {
-  width: 100%;
-  min-height: 52px;
-  border-radius: 18px;
-  background: linear-gradient(135deg, #c084fc 0%, #9333ea 100%);
-  font-size: 1rem;
-  font-weight: 700;
-  letter-spacing: 0.01em;
-  transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
-}
-
-.login-submit:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 16px 30px rgba(147, 51, 234, 0.28);
-  filter: brightness(1.03);
-}
-
-.login-submit:focus-visible {
-  outline: 2px solid rgba(147, 51, 234, 0.24);
-  outline-offset: 3px;
 }
 
 @media (max-width: 960px) {
@@ -291,6 +291,15 @@ async function handleSubmit() {
   .login-orb {
     width: 420px;
     height: 420px;
+  }
+
+  .login-card__media {
+    height: 154px;
+  }
+
+  .login-card__logo {
+    width: min(100%, 260px);
+    height: 110px;
   }
 }
 </style>
