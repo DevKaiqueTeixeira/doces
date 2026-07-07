@@ -5,7 +5,11 @@ import { addItemsToOrder, closeOrder, createOrder, fetchOrders } from '../servic
 import type { CreateOrderPayload, CreatedOrder, UpdateOrderItemsPayload } from '../types/orders'
 
 function sortOrders(orders: CreatedOrder[]) {
-  return [...orders].sort((left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime())
+  return [...orders].sort(
+    (left, right) =>
+      new Date(right.updatedAt ?? right.createdAt).getTime() -
+      new Date(left.updatedAt ?? left.createdAt).getTime(),
+  )
 }
 
 export const useOrdersStore = defineStore('orders', () => {

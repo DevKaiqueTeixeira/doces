@@ -358,6 +358,7 @@ app.get('/produtos', requireAuth, async (_request: AuthenticatedRequest, respons
     const { data, error } = await supabase
       .from('produtos')
       .select('id, nome, preco, created_at, updated_at')
+      .eq('ativo', true)
       .order('nome', { ascending: true })
 
     if (error) {
@@ -436,7 +437,13 @@ app.put('/produtos/:id', requireAuth, async (request: AuthenticatedRequest, resp
 app.delete('/produtos/:id', requireAuth, async (request: AuthenticatedRequest, response: Response) => {
   try {
     const supabase = getSupabaseAdmin()
-    const { error } = await supabase.from('produtos').delete().eq('id', request.params.id)
+    const { error } = await supabase
+      .from('produtos')
+      .update({
+        ativo: false,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', request.params.id)
 
     if (error) {
       throw error

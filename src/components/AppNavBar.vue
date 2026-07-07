@@ -1,48 +1,49 @@
 <template>
   <QHeader class="app-nav" elevated>
     <div class="app-nav__inner">
-      <div class="app-nav__row">
-        <BaseButton
-          label="Home"
-          icon="home"
-          :variant="active === 'home' ? 'solid' : 'ghost'"
-          :full-width="false"
-          compact
-          @click="emit('navigate', 'home')"
-        />
+      <div class="app-nav__top">
+        <div class="app-nav__links">
+          <BaseButton
+            label="Home"
+            icon="home"
+            :variant="active === 'home' ? 'solid' : 'ghost'"
+            compact
+            @click="emit('navigate', 'home')"
+          />
 
-        <BaseButton
-          label="Produtos"
-          icon="inventory_2"
-          :variant="active === 'produtos' ? 'solid' : 'ghost'"
-          :full-width="false"
-          compact
-          @click="emit('navigate', 'produtos')"
-        />
+          <BaseButton
+            label="Produtos"
+            icon="inventory_2"
+            :variant="active === 'produtos' ? 'solid' : 'ghost'"
+            compact
+            @click="emit('navigate', 'produtos')"
+          />
 
-        <BaseButton
-          label="Pedidos"
-          icon="receipt_long"
-          :variant="active === 'pedidos' ? 'solid' : 'ghost'"
-          :full-width="false"
-          compact
-          @click="emit('navigate', 'pedidos')"
-        />
-
-        <div class="app-nav__progress-chip" aria-label="Resumo financeiro dos pedidos">
-          <div class="app-nav__progress-track">
-            <div class="app-nav__progress-fill app-nav__progress-fill--green" :style="receivedStyle"></div>
-            <div class="app-nav__progress-fill app-nav__progress-fill--orange" :style="openStyle"></div>
-          </div>
-
-          <div class="app-nav__progress-values">
-            <span class="app-nav__value app-nav__value--orange">{{ formatCurrency(openTotal) }}</span>
-            <span class="app-nav__separator">/</span>
-            <span class="app-nav__value app-nav__value--green">{{ formatCurrency(receivedTotal) }}</span>
-          </div>
+          <BaseButton
+            label="Pedidos"
+            icon="receipt_long"
+            :variant="active === 'pedidos' ? 'solid' : 'ghost'"
+            compact
+            @click="emit('navigate', 'pedidos')"
+          />
         </div>
 
-        <QBtn flat round dense icon="logout" aria-label="Sair" class="app-nav__logout" @click="emit('logout')" />
+        <div class="app-nav__utility">
+          <QBtn flat round dense icon="logout" aria-label="Sair" class="app-nav__logout" @click="emit('logout')" />
+        </div>
+      </div>
+
+      <div class="app-nav__progress-chip" aria-label="Resumo financeiro dos pedidos">
+        <div class="app-nav__progress-track">
+          <div class="app-nav__progress-fill app-nav__progress-fill--green" :style="receivedStyle"></div>
+          <div class="app-nav__progress-fill app-nav__progress-fill--orange" :style="openStyle"></div>
+        </div>
+
+        <div class="app-nav__progress-values">
+          <span class="app-nav__value app-nav__value--orange">{{ formatCurrency(openTotal) }}</span>
+          <span class="app-nav__separator">/</span>
+          <span class="app-nav__value app-nav__value--green">{{ formatCurrency(receivedTotal) }}</span>
+        </div>
       </div>
     </div>
   </QHeader>
@@ -95,21 +96,33 @@ function formatCurrency(value: number) {
 }
 
 .app-nav__inner {
-  min-height: 66px;
+  min-height: 94px;
   padding: 10px 12px;
+  display: grid;
+  gap: 10px;
 }
 
-.app-nav__row {
+.app-nav__top {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.app-nav__links {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  align-items: center;
+  width: 100%;
+  max-width: 420px;
+  margin-inline: auto;
+}
+
+.app-nav__utility {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 8px;
-  overflow-x: auto;
-  scrollbar-width: none;
-}
-
-.app-nav__row::-webkit-scrollbar {
-  display: none;
+  justify-content: flex-end;
 }
 
 .app-nav__progress-chip {
@@ -117,7 +130,7 @@ function formatCurrency(value: number) {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  flex: 0 0 auto;
+  width: 100%;
   min-height: 40px;
   padding: 0 14px;
   border-radius: 14px;
@@ -179,34 +192,44 @@ function formatCurrency(value: number) {
   flex: 0 0 auto;
 }
 
-.app-nav__row :deep(.base-button--compact) {
+.app-nav__links :deep(.base-button--compact) {
   min-height: 40px;
-  padding-inline: 12px;
+  padding-inline: 10px;
   border-radius: 12px;
   font-size: 0.84rem;
   letter-spacing: 0.02em;
+  width: 100%;
 }
 
-.app-nav__row :deep(.base-button--compact .q-icon) {
+.app-nav__links :deep(.base-button--compact .q-icon) {
   font-size: 1rem;
 }
 
 @media (max-width: 640px) {
   .app-nav__inner {
-    min-height: 92px;
+    min-height: 88px;
     padding: 8px 8px 10px;
+    gap: 8px;
   }
 
-  .app-nav__row {
-    flex-wrap: wrap;
+  .app-nav__top {
+    grid-template-columns: minmax(0, 1fr) auto;
     gap: 6px;
-    overflow-x: visible;
+  }
+
+  .app-nav__links {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+    max-width: none;
+  }
+
+  .app-nav__utility {
+    justify-content: center;
   }
 
   .app-nav__progress-chip {
-    order: 2;
-    width: 100%;
     min-height: 38px;
+    width: 100%;
     padding-inline: 12px;
     justify-content: center;
   }
@@ -219,14 +242,10 @@ function formatCurrency(value: number) {
     font-size: 0.62rem;
   }
 
-  .app-nav__row :deep(.base-button--compact) {
+  .app-nav__links :deep(.base-button--compact) {
     min-height: 38px;
-    padding-inline: 10px;
-    font-size: 0.78rem;
-  }
-
-  .app-nav__logout {
-    order: 1;
+    padding-inline: 8px;
+    font-size: 0.76rem;
   }
 }
 </style>

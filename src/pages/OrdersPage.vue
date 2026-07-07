@@ -19,8 +19,8 @@
               loading-text="Carregando pedidos..."
               empty-text="Nenhum pedido cadastrado ainda."
             >
-              <template #body-cell-createdAt="props">
-                <QTd :props="props">{{ formatDate(props.row.createdAt) }}</QTd>
+              <template #body-cell-updatedAt="props">
+                <QTd :props="props">{{ formatDate(props.row.updatedAt ?? props.row.createdAt) }}</QTd>
               </template>
 
               <template #body-cell-total="props">
@@ -56,6 +56,17 @@
                     round
                     dense
                     flat
+                    color="accent"
+                    icon="chat"
+                    aria-label="Cobrar cliente"
+                    :disable="props.row.formaPagamento !== 'aberto'"
+                    @click="openChargeModal(props.row)"
+                  />
+
+                  <QBtn
+                    round
+                    dense
+                    flat
                     color="positive"
                     icon="check"
                     aria-label="Receber pagamento"
@@ -74,24 +85,45 @@
     <QDialog v-model="dialogOpen" persistent>
       <QCard flat class="order-dialog">
         <QCardSection v-if="editingOrder" class="order-dialog__content">
-          <BaseInput
-            :model-value="editingOrder.clienteNome"
-            label="Cliente"
-            icon="person"
-            placeholder=""
-            :disabled="true"
-          />
+          <section class="person-panel">
+            <QIcon name="person" color="primary" size="26px" />
+            <div class="entity-pair entity-pair--person">
+              <span class="entity-pair__label">Cliente</span>
+              <strong class="entity-pair__value">{{ editingOrder.clienteNome }}</strong>
+            </div>
+          </section>
 
           <div class="order-dialog__meta">
-            <span>Pedido feito por {{ editingOrder.usuarioNome }}</span>
-            <span>{{ formatDate(editingOrder.createdAt) }}</span>
+            <span class="entity-pair entity-pair--person entity-pair--inline">
+              <small class="entity-pair__label">Feito por</small>
+              <strong class="entity-pair__value">{{ editingOrder.usuarioNome }}</strong>
+            </span>
+
+            <div class="order-dialog__dates">
+              <span class="entity-pair">
+                <small class="entity-pair__label">Data do pedido</small>
+                <strong class="entity-pair__value order-dialog__date-value">
+                  {{ formatDate(editingOrder.createdAt) }}
+                </strong>
+              </span>
+
+              <span class="entity-pair entity-pair--update">
+                <small class="entity-pair__label">Atualizacao</small>
+                <strong class="entity-pair__value order-dialog__date-value order-dialog__date-value--update">
+                  {{ formatDate(editingOrder.updatedAt ?? editingOrder.createdAt) }}
+                </strong>
+              </span>
+            </div>
           </div>
 
           <div class="order-dialog__list">
-            <article v-for="product in products" :key="product.id" class="order-dialog__item">
+            <article v-for="product in editableProducts" :key="product.id" class="order-dialog__item">
               <div class="order-dialog__item-copy">
                 <strong>{{ product.nome }}</strong>
-                <span>{{ formatCurrency(product.preco) }}</span>
+                <span>
+                  {{ formatCurrency(product.preco) }}
+                  <em v-if="product.archived">Produto removido do catalogo</em>
+                </span>
               </div>
 
               <div class="order-dialog__item-actions">
@@ -113,7 +145,7 @@
                   flat
                   color="primary"
                   icon="add"
-                  :disable="saving"
+                  :disable="saving || product.archived"
                   @click="incrementEditableProduct(product.id)"
                 />
               </div>
@@ -145,6 +177,75 @@
       </QCard>
     </QDialog>
 
+    <QDialog v-model="chargeDialogOpen">
+      <QCard flat class="charge-dialog">
+        <QCardSection v-if="chargeOrder" class="charge-dialog__content">
+          <div class="charge-dialog__header">
+            <h2>Cobrar cliente</h2>
+          </div>
+
+          <div class="charge-dialog__meta">
+            <span class="charge-dialog__meta-item entity-pair entity-pair--person">
+              <small class="entity-pair__label">Cliente</small>
+              <strong class="entity-pair__value">{{ chargeOrder.clienteNome }}</strong>
+            </span>
+
+            <span class="charge-dialog__meta-item charge-dialog__meta-item--total entity-pair">
+              <small class="entity-pair__label">Total do pedido</small>
+              <strong class="entity-pair__value">{{ formatCurrency(chargeOrder.total) }}</strong>
+            </span>
+          </div>
+
+          <section class="charge-dialog__message">
+            <span class="charge-dialog__message-label">Mensagem pronta</span>
+            <pre class="charge-dialog__message-content">{{ chargeMessage }}</pre>
+          </section>
+
+          <div class="charge-dialog__actions">
+            <QBtn
+              round
+              unelevated
+              color="white"
+              text-color="primary"
+              icon="close"
+              aria-label="Fechar"
+              class="charge-dialog__icon-action charge-dialog__icon-action--ghost"
+              @click="closeChargeDialog"
+            >
+              <QTooltip>Fechar</QTooltip>
+            </QBtn>
+
+            <QBtn
+              round
+              unelevated
+              color="white"
+              text-color="primary"
+              icon="content_copy"
+              aria-label="Copiar mensagem"
+              class="charge-dialog__icon-action charge-dialog__icon-action--ghost"
+              @click="handleCopyChargeMessage"
+            >
+              <QTooltip>Copiar mensagem</QTooltip>
+            </QBtn>
+
+            <QBtn
+              round
+              unelevated
+              color="primary"
+              text-color="white"
+              icon="share"
+              aria-label="Compartilhar"
+              class="charge-dialog__icon-action"
+              :disable="!canShareMessage"
+              @click="handleShareChargeMessage"
+            >
+              <QTooltip>Compartilhar</QTooltip>
+            </QBtn>
+          </div>
+        </QCardSection>
+      </QCard>
+    </QDialog>
+
     <BaseConfirmDialog
       v-model="confirmDialog.open.value"
       :title="confirmDialog.options.value.title"
@@ -162,27 +263,34 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
-import { QBtn, QCard, QCardSection, QChip, QDialog, QLayout, QPage, QPageContainer, QTd, useQuasar } from 'quasar'
+import { QBtn, QCard, QCardSection, QChip, QDialog, QLayout, QPage, QPageContainer, QTd, QTooltip, useQuasar } from 'quasar'
 import { useRouter } from 'vue-router'
 
 import AppNavBar from '../components/AppNavBar.vue'
 import BaseButton from '../components/base/BaseButton.vue'
 import BaseConfirmDialog from '../components/base/BaseConfirmDialog.vue'
-import BaseInput from '../components/base/BaseInput.vue'
 import BaseTable from '../components/base/BaseTable.vue'
 import { useAuthStore } from '../stores/auth'
 import { useOrdersStore } from '../stores/orders'
 import { useProductsStore } from '../stores/products'
 import type { CreatedOrder } from '../types/orders'
 import { useConfirmDialog } from '../utils/use-confirm-dialog'
+import { buildOrderChargeMessage } from '../utils/order-charge'
+
+type EditableOrderProduct = {
+  id: string
+  nome: string
+  preco: number
+  archived: boolean
+}
 
 const columns = [
-  { name: 'createdAt', label: 'Data', field: 'createdAt', align: 'left' as const, sortable: true },
+  { name: 'actions', label: 'Acoes', field: 'id', align: 'left' as const },
   { name: 'clienteNome', label: 'Cliente', field: 'clienteNome', align: 'left' as const, sortable: true },
-  { name: 'usuarioNome', label: 'Feito por', field: 'usuarioNome', align: 'left' as const, sortable: true },
   { name: 'formaPagamento', label: 'Status', field: 'formaPagamento', align: 'left' as const, sortable: true },
   { name: 'total', label: 'Total', field: 'total', align: 'left' as const, sortable: true },
-  { name: 'actions', label: 'Acoes', field: 'id', align: 'right' as const },
+  { name: 'usuarioNome', label: 'Feito por', field: 'usuarioNome', align: 'left' as const, sortable: true },
+  { name: 'updatedAt', label: 'Data', field: 'updatedAt', align: 'left' as const, sortable: true },
 ]
 
 const authStore = useAuthStore()
@@ -190,22 +298,55 @@ const ordersStore = useOrdersStore()
 const productsStore = useProductsStore()
 const $q = useQuasar()
 const router = useRouter()
+const pixKey = import.meta.env.VITE_PIX_KEY ?? ''
+const pixReceiverName = import.meta.env.VITE_PIX_RECEIVER_NAME ?? ''
 
 const { token } = storeToRefs(authStore)
 const { closingId, errorMessage, items, loading, openTotal, receivedTotal, saving, updatingId } = storeToRefs(ordersStore)
 const { items: products } = storeToRefs(productsStore)
 
 const confirmDialog = useConfirmDialog()
+const chargeDialogOpen = ref(false)
 const dialogOpen = ref(false)
 const editingOrderId = ref('')
+const chargeOrderId = ref('')
 const editableQuantities = ref<Record<string, number>>({})
 const baseQuantities = ref<Record<string, number>>({})
 const pendingCloseOrderId = ref('')
 
 const editingOrder = computed(() => items.value.find((order) => order.id === editingOrderId.value) ?? null)
+const chargeOrder = computed(() => items.value.find((order) => order.id === chargeOrderId.value) ?? null)
+
+const editableProducts = computed<EditableOrderProduct[]>(() => {
+  const productMap = new Map<string, EditableOrderProduct>()
+
+  for (const product of products.value) {
+    productMap.set(product.id, {
+      id: product.id,
+      nome: product.nome,
+      preco: product.preco,
+      archived: false,
+    })
+  }
+
+  for (const item of editingOrder.value?.items ?? []) {
+    if (productMap.has(item.produtoId)) {
+      continue
+    }
+
+    productMap.set(item.produtoId, {
+      id: item.produtoId,
+      nome: item.produtoNome,
+      preco: item.precoUnitario,
+      archived: true,
+    })
+  }
+
+  return [...productMap.values()].sort((left, right) => left.nome.localeCompare(right.nome, 'pt-BR'))
+})
 
 const editableTotal = computed(() => {
-  return products.value.reduce((sum, product) => {
+  return editableProducts.value.reduce((sum, product) => {
     const quantity = editableQuantities.value[product.id] ?? 0
     return sum + quantity * product.preco
   }, 0)
@@ -214,6 +355,16 @@ const editableTotal = computed(() => {
 const canSaveItems = computed(() => {
   return Boolean(editingOrder.value) && !saving.value && editableTotal.value > 0
 })
+
+const chargeMessage = computed(() => {
+  if (!chargeOrder.value) {
+    return ''
+  }
+
+  return buildOrderChargeMessage(chargeOrder.value, pixKey, pixReceiverName)
+})
+
+const canShareMessage = computed(() => typeof navigator !== 'undefined' && typeof navigator.share === 'function')
 
 watch(errorMessage, (message) => {
   if (!message) {
@@ -261,6 +412,11 @@ function openAddModal(order: CreatedOrder) {
   dialogOpen.value = true
 }
 
+function openChargeModal(order: CreatedOrder) {
+  chargeOrderId.value = order.id
+  chargeDialogOpen.value = true
+}
+
 function closeDialog() {
   if (saving.value) {
     return
@@ -270,6 +426,11 @@ function closeDialog() {
   editingOrderId.value = ''
   baseQuantities.value = {}
   editableQuantities.value = {}
+}
+
+function closeChargeDialog() {
+  chargeDialogOpen.value = false
+  chargeOrderId.value = ''
 }
 
 function incrementEditableProduct(productId: string) {
@@ -298,6 +459,34 @@ async function handleCloseOrder(orderId: string) {
     cancelLabel: 'Cancelar',
     tone: 'success',
   })
+}
+
+async function handleCopyChargeMessage() {
+  if (!chargeMessage.value || typeof navigator === 'undefined' || !navigator.clipboard) {
+    return
+  }
+
+  try {
+    await navigator.clipboard.writeText(chargeMessage.value)
+    $q.notify({ type: 'positive', message: 'Mensagem copiada com sucesso.', position: 'top', timeout: 2200 })
+  } catch {
+    $q.notify({ type: 'negative', message: 'Nao foi possivel copiar a mensagem.', position: 'top', timeout: 2200 })
+  }
+}
+
+async function handleShareChargeMessage() {
+  if (!chargeMessage.value || typeof navigator === 'undefined' || typeof navigator.share !== 'function') {
+    return
+  }
+
+  try {
+    await navigator.share({
+      title: 'Cobranca Jessy Doces',
+      text: chargeMessage.value,
+    })
+  } catch {
+    return
+  }
 }
 
 async function handleConfirmCloseOrder() {
@@ -366,12 +555,115 @@ async function handleLogout() {
 .orders-table__actions {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
-  gap: 8px;
+  justify-content: flex-start;
+  gap: 6px;
 }
 
 .order-dialog {
   width: min(100vw - 24px, 560px);
+}
+
+.charge-dialog {
+  width: min(100vw - 24px, 560px);
+  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 22px 48px rgba(76, 29, 149, 0.14);
+}
+
+.charge-dialog__content {
+  display: grid;
+  gap: 16px;
+}
+
+.charge-dialog__header {
+  text-align: center;
+}
+
+.charge-dialog__header h2 {
+  margin: 0;
+  color: #3b0764;
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.charge-dialog__meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.charge-dialog__meta-item {
+  min-width: 0;
+}
+
+.charge-dialog__meta-item--total {
+  text-align: right;
+  padding: 10px 14px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, rgba(236, 253, 245, 0.98), rgba(209, 250, 229, 0.96));
+  border: 1px solid rgba(110, 231, 183, 0.7);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+
+.charge-dialog__meta-item--total .entity-pair__label {
+  color: #374151;
+}
+
+.charge-dialog__meta-item--total .entity-pair__value {
+  color: #111827;
+  font-size: 1.32rem;
+  font-weight: 800;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.charge-dialog__message {
+  display: grid;
+  gap: 10px;
+  padding: 14px 16px;
+  border-radius: 20px;
+  background: #faf5ff;
+  border: 1px solid rgba(196, 181, 253, 0.55);
+}
+
+.charge-dialog__message-label {
+  color: #8b5cf6;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.charge-dialog__message-content {
+  margin: 0;
+  color: #111827;
+  font-family: var(--login-sans-font, Inter, system-ui, sans-serif);
+  font-size: 0.97rem;
+  line-height: 1.7;
+  white-space: pre-wrap;
+}
+
+.charge-dialog__actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+}
+
+.charge-dialog__icon-action {
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #7c3aed 0%, #9333ea 100%);
+  box-shadow: 0 14px 28px rgba(124, 58, 237, 0.18);
+}
+
+.charge-dialog__icon-action--ghost {
+  background: white;
+  border: 1px solid rgba(196, 181, 253, 0.8);
+  box-shadow: none;
 }
 
 .order-dialog__content {
@@ -379,13 +671,40 @@ async function handleLogout() {
   gap: 16px;
 }
 
+.person-panel {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 12px;
+  align-items: center;
+  padding: 14px 16px;
+  border-radius: 20px;
+  background: #faf5ff;
+  border: 1px solid rgba(196, 181, 253, 0.55);
+}
+
 .order-dialog__meta {
   display: flex;
   justify-content: space-between;
   gap: 12px;
   flex-wrap: wrap;
-  color: #7e22ce;
+  align-items: start;
   font-size: 0.88rem;
+}
+
+.order-dialog__dates {
+  display: grid;
+  gap: 10px;
+  justify-items: end;
+}
+
+.order-dialog__date-value {
+  color: #111827;
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.order-dialog__date-value--update {
+  color: #0f766e;
 }
 
 .order-dialog__list {
@@ -414,6 +733,15 @@ async function handleLogout() {
 
 .order-dialog__item-copy span {
   color: #7e22ce;
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.order-dialog__item-copy em {
+  color: #9a3412;
+  font-style: normal;
+  font-size: 0.8rem;
 }
 
 .order-dialog__item-actions {
@@ -459,6 +787,10 @@ async function handleLogout() {
 
   .order-dialog__actions {
     grid-template-columns: 1fr 1fr;
+  }
+
+  .charge-dialog__actions {
+    gap: 16px;
   }
 }
 </style>

@@ -104,6 +104,48 @@ body {
   min-height: 260px;
 }
 
+.entity-pair {
+  display: grid;
+  gap: 4px;
+}
+
+.entity-pair__label {
+  color: #8b5cf6;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.entity-pair__value {
+  color: #3b0764;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.entity-pair--person .entity-pair__label {
+  color: #a855f7;
+}
+
+.entity-pair--person .entity-pair__value {
+  color: #5b21b6;
+}
+
+.entity-pair--inline {
+  display: inline-flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.entity-pair--inline .entity-pair__label {
+  font-size: 0.78rem;
+}
+
+.entity-pair--inline .entity-pair__value {
+  font-size: 1rem;
+}
+
 @media (max-width: 900px) {
   .page-shell {
     padding: 16px;
@@ -128,5 +170,9 @@ body {
   .status-row {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .entity-pair__value {
+    font-size: 0.96rem;
   }
 }
