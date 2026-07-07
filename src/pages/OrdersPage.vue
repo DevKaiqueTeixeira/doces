@@ -12,12 +12,54 @@
       <QPage class="orders-page">
         <QCard flat class="orders-card">
           <QCardSection>
+            <div class="orders-filters">
+              <QInput
+                v-model="searchTerm"
+                outlined
+                dense
+                clearable
+                hide-bottom-space
+                color="primary"
+                bg-color="white"
+                placeholder="Pesquisar cliente"
+                input-class="orders-filters__input"
+                class="orders-filters__search"
+              >
+                <template #prepend>
+                  <QIcon name="search" color="primary" />
+                </template>
+              </QInput>
+
+              <QSelect
+                v-model="statusFilter"
+                outlined
+                dense
+                emit-value
+                map-options
+                hide-bottom-space
+                stack-label
+                color="primary"
+                bg-color="white"
+                label="Status"
+                :options="statusOptions"
+                options-dense
+                popup-content-class="orders-status-menu"
+                class="orders-filters__select"
+                input-class="orders-filters__input orders-filters__input--select"
+              >
+                <template #prepend>
+                  <QIcon name="tune" color="primary" />
+                </template>
+              </QSelect>
+            </div>
+
             <BaseTable
-              :rows="items"
+              :rows="filteredOrders"
               :columns="columns"
               :loading="loading"
               loading-text="Carregando pedidos..."
-              empty-text="Nenhum pedido cadastrado ainda."
+              :empty-text="ordersEmptyText"
+              :empty-icon="ordersEmptyIcon"
             >
               <template #body-cell-updatedAt="props">
                 <QTd :props="props">{{ formatDate(props.row.updatedAt ?? props.row.createdAt) }}</QTd>
@@ -263,7 +305,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
-import { QBtn, QCard, QCardSection, QChip, QDialog, QLayout, QPage, QPageContainer, QTd, QTooltip, useQuasar } from 'quasar'
+import { QBtn, QCard, QCardSection, QChip, QDialog, QIcon, QInput, QLayout, QPage, QPageContainer, QSelect, QTd, QTooltip, useQuasar } from 'quasar'
 import { useRouter } from 'vue-router'
 
 import AppNavBar from '../components/AppNavBar.vue'
@@ -283,6 +325,8 @@ type EditableOrderProduct = {
   preco: number
   archived: boolean
 }
+
+type OrderStatusFilter = 'todos' | 'aberto' | 'avista'
 
 const columns = [
   { name: 'actions', label: 'Acoes', field: 'id', align: 'left' as const },
@@ -310,9 +354,17 @@ const chargeDialogOpen = ref(false)
 const dialogOpen = ref(false)
 const editingOrderId = ref('')
 const chargeOrderId = ref('')
+const searchTerm = ref('')
+const statusFilter = ref<OrderStatusFilter>('todos')
 const editableQuantities = ref<Record<string, number>>({})
 const baseQuantities = ref<Record<string, number>>({})
 const pendingCloseOrderId = ref('')
+
+const statusOptions = [
+  { label: 'Todos', value: 'todos' },
+  { label: 'Em aberto', value: 'aberto' },
+  { label: 'Recebido', value: 'avista' },
+] as const
 
 const editingOrder = computed(() => items.value.find((order) => order.id === editingOrderId.value) ?? null)
 const chargeOrder = computed(() => items.value.find((order) => order.id === chargeOrderId.value) ?? null)
@@ -365,6 +417,47 @@ const chargeMessage = computed(() => {
 })
 
 const canShareMessage = computed(() => typeof navigator !== 'undefined' && typeof navigator.share === 'function')
+
+const filteredOrders = computed(() => {
+  const normalizedSearch = searchTerm.value.trim().toLowerCase()
+
+  return items.value.filter((order) => {
+    if (statusFilter.value !== 'todos' && order.formaPagamento !== statusFilter.value) {
+      return false
+    }
+
+    if (!normalizedSearch) {
+      return true
+    }
+
+    const searchableText = [
+      order.clienteNome,
+      order.usuarioNome,
+      formatDate(order.updatedAt ?? order.createdAt),
+      formatCurrency(order.total),
+    ]
+      .join(' ')
+      .toLowerCase()
+
+    return searchableText.includes(normalizedSearch)
+  })
+})
+
+const ordersEmptyText = computed(() => {
+  if (searchTerm.value.trim() || statusFilter.value !== 'todos') {
+    return 'Cliente nao encontrado! Pesquise outro nome.'
+  }
+
+  return 'Nenhum pedido cadastrado ainda.'
+})
+
+const ordersEmptyIcon = computed(() => {
+  if (searchTerm.value.trim() || statusFilter.value !== 'todos') {
+    return 'person_search'
+  }
+
+  return 'inventory_2'
+})
 
 watch(errorMessage, (message) => {
   if (!message) {
@@ -550,6 +643,122 @@ async function handleLogout() {
   border-radius: 28px;
   background: rgba(255, 255, 255, 0.97);
   box-shadow: 0 22px 48px rgba(76, 29, 149, 0.12);
+}
+
+.orders-filters {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 148px;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.orders-filters__search,
+.orders-filters__select {
+  width: 100%;
+}
+
+.orders-filters:deep(.q-field__control) {
+  border-radius: 16px;
+  min-height: 48px;
+  padding-inline: 4px;
+  background: linear-gradient(180deg, #ffffff 0%, #fdfbff 100%);
+  box-shadow: none;
+}
+
+.orders-filters:deep(.q-field__bottom) {
+  display: none;
+}
+
+.orders-filters:deep(.q-field--outlined .q-field__control::before) {
+  border: 1px solid #c4b5fd;
+}
+
+.orders-filters:deep(.q-field--outlined .q-field__control::after) {
+  display: none;
+}
+
+.orders-filters:deep(.q-field__native),
+.orders-filters:deep(.q-field__input) {
+  display: flex;
+  align-items: center;
+  min-height: 100%;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+.orders-filters:deep(.q-field__control-container) {
+  height: 100%;
+}
+
+.orders-filters:deep(.q-field__marginal) {
+  height: 48px;
+  align-items: center;
+}
+
+.orders-filters:deep(.q-field__label) {
+  color: #8b5cf6;
+  font-size: 0.76rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.orders-filters:deep(.q-field__prepend),
+.orders-filters:deep(.q-field__append) {
+  align-self: center;
+}
+
+.orders-filters__input {
+  color: #7c3aed;
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+
+.orders-filters__input::placeholder {
+  color: #a78bfa;
+  opacity: 1;
+}
+
+.orders-filters__input--select {
+  text-align: center;
+}
+
+.orders-filters__select:deep(.q-field__native span),
+.orders-filters__select:deep(.q-field__input span),
+.orders-filters__select:deep(.q-item__label) {
+  color: #7c3aed;
+}
+
+.orders-filters__select:deep(.q-field__native),
+.orders-filters__select:deep(.q-field__input) {
+  color: #7c3aed;
+  font-weight: 500;
+}
+
+.orders-filters__select:deep(.q-field__append .q-icon) {
+  color: #6b7280;
+}
+
+:global(.orders-status-menu) {
+  border-radius: 16px;
+  padding: 6px;
+  background: #ffffff;
+  box-shadow: 0 16px 36px rgba(17, 24, 39, 0.12);
+}
+
+:global(.orders-status-menu .q-item) {
+  min-height: 40px;
+  border-radius: 12px;
+  color: #7c3aed;
+}
+
+:global(.orders-status-menu .q-item__label) {
+  color: #7c3aed;
+  font-weight: 500;
+}
+
+:global(.orders-status-menu .q-item--active),
+:global(.orders-status-menu .q-item:hover) {
+  background: #f5edff;
 }
 
 .orders-table__actions {
@@ -785,12 +994,30 @@ async function handleLogout() {
     padding: 20px;
   }
 
+  .orders-filters {
+    grid-template-columns: minmax(0, 1fr) 200px;
+    gap: 12px;
+    align-items: start;
+  }
+
   .order-dialog__actions {
     grid-template-columns: 1fr 1fr;
   }
 
   .charge-dialog__actions {
     gap: 16px;
+  }
+}
+
+@media (max-width: 640px) {
+  .orders-filters {
+    grid-template-columns: minmax(0, 1fr) 130px;
+    gap: 8px;
+    align-items: start;
+  }
+
+  .orders-filters__input {
+    font-size: 0.88rem;
   }
 }
 </style>
