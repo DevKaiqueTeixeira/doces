@@ -8,22 +8,24 @@ function formatCurrency(value: number) {
 }
 
 export function buildOrderChargeMessage(order: CreatedOrder, pixKey: string, pixReceiverName: string) {
-  const items = (order.items ?? []).map((item) => `- ${item.produtoNome} x ${item.quantidade} (${formatCurrency(item.subtotal)})`)
+  const items = (order.items ?? []).map(
+    (item) => `🍫 ${item.produtoNome} x ${item.quantidade} (${formatCurrency(item.subtotal)})`,
+  )
 
   return [
-    `Ola, ${order.clienteNome}.`,
+    `Olá, ${order.clienteNome}.`,
     '',
-    'Segue o resumo do seu pedido na Jessy Doces:',
+    'Segue o resumo do seu pedido na Jessy Doces 🍫:',
     ...items,
     '',
     `Valor total: ${formatCurrency(order.total)}`,
     '',
-    'Para pagamento via PIX:',
+    'Para pagamento via PIX ✨:',
     `Chave: ${pixKey}`,
     `Favorecido: ${pixReceiverName}`,
     '',
-    'Assim que o pagamento for realizado, por favor envie o comprovante por aqui.',
+    'Assim que o pagamento for realizado, por favor envie o comprovante por aqui. 🙏',
     '',
-    'Obrigada.',
+    'Obrigada! 💜',
   ].join('\n')
 }

@@ -283,10 +283,10 @@ async function handleSaveProduct() {
   try {
     if (editingProductId.value) {
       await productsStore.updateExistingProduct(token.value, editingProductId.value, payload)
-      $q.notify({ type: 'positive', message: 'Produto atualizado com sucesso.', position: 'top', timeout: 2200 })
+      $q.notify({ type: 'positive', message: 'Produto atualizado com sucesso.', position: 'bottom', timeout: 2200 })
     } else {
       await productsStore.createNewProduct(token.value, payload)
-      $q.notify({ type: 'positive', message: 'Produto cadastrado com sucesso.', position: 'top', timeout: 2200 })
+      $q.notify({ type: 'positive', message: 'Produto cadastrado com sucesso.', position: 'bottom', timeout: 2200 })
     }
 
     dialogOpen.value = false
@@ -316,7 +316,7 @@ async function handleConfirmDelete() {
 
   try {
     await productsStore.removeProduct(token.value, pendingDeleteProductId.value)
-    $q.notify({ type: 'positive', message: 'Produto excluido com sucesso.', position: 'top', timeout: 2200 })
+    $q.notify({ type: 'positive', message: 'Produto excluido com sucesso.', position: 'bottom', timeout: 2200 })
     confirmDialog.finish()
     pendingDeleteProductId.value = ''
   } catch {

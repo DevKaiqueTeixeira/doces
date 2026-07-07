@@ -561,7 +561,7 @@ async function handleCopyChargeMessage() {
 
   try {
     await navigator.clipboard.writeText(chargeMessage.value)
-    $q.notify({ type: 'positive', message: 'Mensagem copiada com sucesso.', position: 'top', timeout: 2200 })
+    $q.notify({ type: 'positive', message: 'Mensagem copiada com sucesso.', position: 'bottom', timeout: 2200 })
   } catch {
     $q.notify({ type: 'negative', message: 'Nao foi possivel copiar a mensagem.', position: 'top', timeout: 2200 })
   }
@@ -590,7 +590,7 @@ async function handleConfirmCloseOrder() {
 
   try {
     await ordersStore.closeExistingOrder(token.value, pendingCloseOrderId.value)
-    $q.notify({ type: 'positive', message: 'Pagamento recebido com sucesso.', position: 'top', timeout: 2200 })
+    $q.notify({ type: 'positive', message: 'Pagamento recebido com sucesso.', position: 'bottom', timeout: 2200 })
     confirmDialog.finish()
     pendingCloseOrderId.value = ''
   } catch {
@@ -611,7 +611,7 @@ async function handleSaveItems() {
         .filter((item) => item.quantidade > 0),
     })
 
-    $q.notify({ type: 'positive', message: 'Pedido atualizado com sucesso.', position: 'top', timeout: 2200 })
+    $q.notify({ type: 'positive', message: 'Pedido atualizado com sucesso.', position: 'bottom', timeout: 2200 })
     closeDialog()
   } catch {
     return

@@ -239,7 +239,7 @@ async function handleCreateOrder(mode: OrderPaymentMode) {
         mode === 'avista'
           ? `Pedido cadastrado a vista. Total ${formatCurrency(createdOrder.total)}.`
           : `Pedido deixado em aberto. Total ${formatCurrency(createdOrder.total)}.`,
-      position: 'top',
+      position: 'bottom',
       timeout: 2400,
     })
 
