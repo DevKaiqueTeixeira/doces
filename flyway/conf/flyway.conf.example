@@ -1,0 +1,5 @@
+flyway.locations=filesystem:flyway/sql
+flyway.url=jdbc:postgresql://db.your-project-ref.supabase.co:5432/postgres?sslmode=require
+flyway.user=postgres
+flyway.password=your-database-password
+flyway.schemas=public

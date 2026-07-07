@@ -4,6 +4,7 @@ import cors from 'cors'
 import express, { type Request, type Response } from 'express'
 
 import {
+  getSupabaseAdmin,
   getSupabaseProbeConfig,
   getSupabaseQueryClient,
   hasSupabaseAdminConfig,
@@ -57,6 +58,56 @@ app.get('/supabase/status', async (_request: Request, response: Response) => {
     response.status(500).json({
       connected: false,
       message: error instanceof Error ? error.message : 'Falha ao validar Supabase.',
+    })
+  }
+})
+
+app.post('/auth/login', async (request: Request, response: Response) => {
+  const nome = typeof request.body?.nome === 'string' ? request.body.nome.trim().toLowerCase() : ''
+  const senha = typeof request.body?.senha === 'string' ? request.body.senha : ''
+
+  if (!nome || !senha) {
+    response.status(400).json({
+      message: 'Informe nome e senha para entrar.',
+    })
+    return
+  }
+
+  if (!hasSupabaseAdminConfig()) {
+    response.status(500).json({
+      message: 'Defina SUPABASE_SECRET_KEY no .env para validar os usuarios no Supabase.',
+    })
+    return
+  }
+
+  try {
+    const supabase = getSupabaseAdmin()
+    const { data, error } = await supabase
+      .from('usuarios')
+      .select('id, nome, senha')
+      .eq('nome', nome)
+      .maybeSingle()
+
+    if (error) {
+      throw error
+    }
+
+    if (!data || data.senha !== senha) {
+      response.status(401).json({
+        message: 'Usuario ou senha invalidos.',
+      })
+      return
+    }
+
+    response.json({
+      user: {
+        id: data.id,
+        nome: data.nome,
+      },
+    })
+  } catch (error) {
+    response.status(500).json({
+      message: error instanceof Error ? error.message : 'Falha ao autenticar usuario.',
     })
   }
 })

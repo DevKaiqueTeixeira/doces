@@ -5,7 +5,7 @@ function getSupabaseEnv() {
     url: process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL,
     publishableKey:
       process.env.SUPABASE_PUBLISHABLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
-    serviceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY,
+    secretKey: process.env.SUPABASE_SECRET_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY,
   }
 }
 
@@ -15,8 +15,8 @@ export function hasSupabasePublicConfig() {
 }
 
 export function hasSupabaseAdminConfig() {
-  const { serviceRoleKey, url } = getSupabaseEnv()
-  return Boolean(url && serviceRoleKey)
+  const { secretKey, url } = getSupabaseEnv()
+  return Boolean(url && secretKey)
 }
 
 function createSupabaseClient(url: string, key: string) {
@@ -39,13 +39,13 @@ export function getSupabasePublicClient() {
 }
 
 export function getSupabaseAdmin() {
-  const { serviceRoleKey, url } = getSupabaseEnv()
+  const { secretKey, url } = getSupabaseEnv()
 
-  if (!url || !serviceRoleKey) {
-    throw new Error('Defina SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY no arquivo .env.')
+  if (!url || !secretKey) {
+    throw new Error('Defina SUPABASE_URL e SUPABASE_SECRET_KEY no arquivo .env.')
   }
 
-  return createSupabaseClient(url, serviceRoleKey)
+  return createSupabaseClient(url, secretKey)
 }
 
 export function getSupabaseQueryClient() {
@@ -57,15 +57,15 @@ export function getSupabaseQueryClient() {
 }
 
 export function getSupabaseProbeConfig() {
-  const { publishableKey, serviceRoleKey, url } = getSupabaseEnv()
+  const { publishableKey, secretKey, url } = getSupabaseEnv()
 
   if (!url) {
     throw new Error('Defina NEXT_PUBLIC_SUPABASE_URL no .env.')
   }
 
-  if (serviceRoleKey) {
+  if (secretKey) {
     return {
-      key: serviceRoleKey,
+      key: secretKey,
       mode: 'admin' as const,
       url,
     }

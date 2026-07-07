@@ -8,7 +8,11 @@
     "dev:front": "vite",
     "dev:api": "tsx watch server/index.ts",
     "build": "vue-tsc -b && vite build && tsc -p tsconfig.server.json",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "db:flyway:version": "powershell -ExecutionPolicy Bypass -File scripts/flyway.ps1 version",
+    "db:flyway:info": "powershell -ExecutionPolicy Bypass -File scripts/flyway.ps1 info",
+    "db:flyway:migrate": "powershell -ExecutionPolicy Bypass -File scripts/flyway.ps1 migrate",
+    "db:flyway:validate": "powershell -ExecutionPolicy Bypass -File scripts/flyway.ps1 validate"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.57.4",
@@ -19,7 +23,8 @@
     "quasar": "^2.18.5",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
-    "vue": "^3.5.39"
+    "vue": "^3.5.39",
+    "vue-router": "^4.6.3"
   },
   "devDependencies": {
     "@quasar/vite-plugin": "^1.10.0",

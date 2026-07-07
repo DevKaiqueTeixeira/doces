@@ -6,10 +6,16 @@ import 'quasar/dist/quasar.css'
 
 import './style.css'
 import App from './App.vue'
+import { createAppRouter } from './router'
+import { useAuthStore } from './stores/auth'
 
 const app = createApp(App)
+const pinia = createPinia()
+const router = createAppRouter(pinia)
 
-app.use(createPinia())
+useAuthStore(pinia).hydrate()
+
+app.use(pinia)
 app.use(Quasar, {
   config: {
     brand: {
@@ -19,5 +25,6 @@ app.use(Quasar, {
     },
   },
 })
+app.use(router)
 
 app.mount('#app')

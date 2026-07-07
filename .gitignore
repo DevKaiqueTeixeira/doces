@@ -8,11 +8,13 @@ pnpm-debug.log*
 lerna-debug.log*
 
 node_modules
+.tools
 dist
 dist-server
 dist-ssr
 *.local
 .env
+flyway/conf/flyway.local.conf
 
 # Editor directories and files
 .vscode/*
