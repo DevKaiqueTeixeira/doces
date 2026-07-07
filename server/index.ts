@@ -36,11 +36,32 @@ type ProductRow = {
 }
 
 type OrderInsertItem = {
+  id?: string
   produto_id: string
   produto_nome: string
   quantidade: number
   preco_unitario: number
   subtotal: number
+}
+
+type PedidoItemRow = {
+  id: string
+  produto_id: string
+  produto_nome: string
+  quantidade: number
+  preco_unitario: number
+  subtotal: number
+}
+
+type PedidoRow = {
+  id: string
+  cliente_nome: string
+  forma_pagamento: 'aberto' | 'avista'
+  total: number
+  usuario_nome: string
+  created_at: string
+  updated_at: string
+  pedido_itens?: PedidoItemRow[]
 }
 
 function getAuthTokenSecret() {
@@ -178,6 +199,9 @@ function formatPedido(pedido: {
   forma_pagamento: 'aberto' | 'avista'
   total: number
   created_at: string
+  usuario_nome?: string
+  updated_at?: string
+  pedido_itens?: PedidoItemRow[]
 }) {
   return {
     id: pedido.id,
@@ -185,6 +209,39 @@ function formatPedido(pedido: {
     formaPagamento: pedido.forma_pagamento,
     total: Number(pedido.total),
     createdAt: pedido.created_at,
+    updatedAt: pedido.updated_at,
+    usuarioNome: pedido.usuario_nome ?? '',
+    items: (pedido.pedido_itens ?? []).map((item) => ({
+      id: item.id,
+      produtoId: item.produto_id,
+      produtoNome: item.produto_nome,
+      quantidade: item.quantidade,
+      precoUnitario: Number(item.preco_unitario),
+      subtotal: Number(item.subtotal),
+    })),
+  }
+}
+
+function parseOrderItemsPayload(body: Request['body']) {
+  const itens = Array.isArray(body?.itens) ? body.itens : []
+
+  if (!itens.length) {
+    throw new Error('Informe os itens que devem permanecer no pedido.')
+  }
+
+  const normalizedItems = itens
+    .map((item: Record<string, unknown>) => ({
+      produtoId: typeof item.produtoId === 'string' ? item.produtoId : '',
+      quantidade: Number(item.quantidade),
+    }))
+    .filter((item: ParsedOrderItem) => item.produtoId && Number.isInteger(item.quantidade) && item.quantidade > 0)
+
+  if (!normalizedItems.length) {
+    throw new Error('Os itens enviados para o pedido estao invalidos.')
+  }
+
+  return {
+    itens: normalizedItems,
   }
 }
 
@@ -454,7 +511,7 @@ app.post('/pedidos', requireAuth, async (request: AuthenticatedRequest, response
         usuario_nome: authUser.nome,
         updated_at: now,
       })
-      .select('id, cliente_nome, forma_pagamento, total, created_at')
+      .select('id, cliente_nome, forma_pagamento, total, usuario_nome, created_at, updated_at')
       .single()
 
     if (orderError) {
@@ -465,6 +522,7 @@ app.post('/pedidos', requireAuth, async (request: AuthenticatedRequest, response
       itemsToInsert.map((item: OrderInsertItem) => ({
         ...item,
         pedido_id: createdOrder.id,
+        updated_at: now,
       })),
     )
 
@@ -479,6 +537,195 @@ app.post('/pedidos', requireAuth, async (request: AuthenticatedRequest, response
   } catch (error) {
     response.status(400).json({
       message: error instanceof Error ? error.message : 'Falha ao cadastrar pedido.',
+    })
+  }
+})
+
+app.get('/pedidos', requireAuth, async (_request: AuthenticatedRequest, response: Response) => {
+  try {
+    const supabase = getSupabaseAdmin()
+    const { data, error } = await supabase
+      .from('pedidos')
+      .select(
+        'id, cliente_nome, forma_pagamento, total, usuario_nome, created_at, updated_at, pedido_itens(id, produto_id, produto_nome, quantidade, preco_unitario, subtotal)',
+      )
+      .order('created_at', { ascending: false })
+
+    if (error) {
+      throw error
+    }
+
+    response.json({
+      pedidos: (data ?? []).map((pedido: PedidoRow) => formatPedido(pedido)),
+    })
+  } catch (error) {
+    response.status(500).json({
+      message: error instanceof Error ? error.message : 'Falha ao buscar pedidos.',
+    })
+  }
+})
+
+app.put('/pedidos/:id/encerrar', requireAuth, async (request: AuthenticatedRequest, response: Response) => {
+  try {
+    const supabase = getSupabaseAdmin()
+    const { data, error } = await supabase
+      .from('pedidos')
+      .update({
+        forma_pagamento: 'avista',
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', request.params.id)
+      .select('id, cliente_nome, forma_pagamento, total, usuario_nome, created_at, updated_at')
+      .single()
+
+    if (error) {
+      throw error
+    }
+
+    response.json({
+      pedido: formatPedido(data),
+    })
+  } catch (error) {
+    response.status(400).json({
+      message: error instanceof Error ? error.message : 'Falha ao encerrar pedido.',
+    })
+  }
+})
+
+app.put('/pedidos/:id/itens', requireAuth, async (request: AuthenticatedRequest, response: Response) => {
+  try {
+    const payload = parseOrderItemsPayload(request.body)
+    const supabase = getSupabaseAdmin()
+    const pedidoId = request.params.id
+
+    const { data: order, error: orderError } = await supabase
+      .from('pedidos')
+      .select('id, cliente_nome, forma_pagamento, total, usuario_nome, created_at, updated_at')
+      .eq('id', pedidoId)
+      .single()
+
+    if (orderError) {
+      throw orderError
+    }
+
+    const { data: currentItems, error: itemsError } = await supabase
+      .from('pedido_itens')
+      .select('id, produto_id, produto_nome, quantidade, preco_unitario, subtotal')
+      .eq('pedido_id', pedidoId)
+
+    if (itemsError) {
+      throw itemsError
+    }
+
+    const currentItemsMap = new Map((currentItems ?? []).map((item: PedidoItemRow) => [item.produto_id, item]))
+    const desiredItemsMap = new Map(payload.itens.map((item: ParsedOrderItem) => [item.produtoId, item.quantidade]))
+
+    for (const currentItem of currentItems ?? []) {
+      const desiredQuantity = desiredItemsMap.get(currentItem.produto_id) ?? 0
+
+      if (desiredQuantity < currentItem.quantidade) {
+        throw new Error('Nao e permitido reduzir itens ja cadastrados no pedido.')
+      }
+    }
+
+    const productIds = payload.itens.map((item: ParsedOrderItem) => item.produtoId)
+    const { data: products, error: productsError } = await supabase
+      .from('produtos')
+      .select('id, nome, preco')
+      .in('id', productIds)
+
+    if (productsError) {
+      throw productsError
+    }
+
+    const productsMap = new Map((products ?? []).map((product: ProductRow) => [product.id, product]))
+
+    if (productsMap.size !== productIds.length) {
+      throw new Error('Um ou mais produtos enviados nao foram encontrados.')
+    }
+
+    const now = new Date().toISOString()
+    let total = 0
+
+    for (const item of payload.itens) {
+      const product = productsMap.get(item.produtoId)
+
+      if (!product) {
+        throw new Error('Produto nao encontrado para atualizar o pedido.')
+      }
+
+      const precoUnitario = Number(product.preco)
+      const subtotal = Number((precoUnitario * item.quantidade).toFixed(2))
+      total += subtotal
+
+      const currentItem = currentItemsMap.get(item.produtoId)
+
+      if (currentItem) {
+        const { error: updateItemError } = await supabase
+          .from('pedido_itens')
+          .update({
+            quantidade: item.quantidade,
+            preco_unitario: precoUnitario,
+            subtotal,
+            produto_nome: product.nome,
+            updated_at: now,
+          })
+          .eq('id', currentItem.id)
+
+        if (updateItemError) {
+          throw updateItemError
+        }
+
+        continue
+      }
+
+      const { error: insertItemError } = await supabase.from('pedido_itens').insert({
+        pedido_id: pedidoId,
+        produto_id: product.id,
+        produto_nome: product.nome,
+        quantidade: item.quantidade,
+        preco_unitario: precoUnitario,
+        subtotal,
+        updated_at: now,
+      })
+
+      if (insertItemError) {
+        throw insertItemError
+      }
+    }
+
+    const { data: updatedOrder, error: updatedOrderError } = await supabase
+      .from('pedidos')
+      .update({
+        total: Number(total.toFixed(2)),
+        updated_at: now,
+      })
+      .eq('id', pedidoId)
+      .select('id, cliente_nome, forma_pagamento, total, usuario_nome, created_at, updated_at')
+      .single()
+
+    if (updatedOrderError) {
+      throw updatedOrderError
+    }
+
+    const { data: refreshedItems, error: refreshedItemsError } = await supabase
+      .from('pedido_itens')
+      .select('id, produto_id, produto_nome, quantidade, preco_unitario, subtotal')
+      .eq('pedido_id', pedidoId)
+
+    if (refreshedItemsError) {
+      throw refreshedItemsError
+    }
+
+    response.json({
+      pedido: formatPedido({
+        ...updatedOrder,
+        pedido_itens: refreshedItems ?? [],
+      }),
+    })
+  } catch (error) {
+    response.status(400).json({
+      message: error instanceof Error ? error.message : 'Falha ao atualizar itens do pedido.',
     })
   }
 })

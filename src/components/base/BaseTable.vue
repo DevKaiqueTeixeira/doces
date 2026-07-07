@@ -54,6 +54,7 @@ withDefaults(
 .base-table {
   border-radius: 20px;
   overflow: hidden;
+  font-family: var(--login-sans-font, Inter, system-ui, sans-serif);
 }
 
 .base-table__state {
@@ -64,5 +65,35 @@ withDefaults(
   color: #6b21a8;
   text-align: center;
   padding: 20px;
+}
+
+.base-table:deep(.q-table thead th) {
+  color: #6b21a8;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  background: #fcf8ff;
+}
+
+.base-table:deep(.q-table tbody td) {
+  color: #3b0764;
+  font-size: 0.94rem;
+  font-weight: 600;
+}
+
+.base-table:deep(.q-table tbody tr:nth-child(even)) {
+  background: rgba(250, 245, 255, 0.82);
+}
+
+@media (max-width: 640px) {
+  .base-table:deep(.q-table thead th) {
+    font-size: 0.68rem;
+    letter-spacing: 0.06em;
+  }
+
+  .base-table:deep(.q-table tbody td) {
+    font-size: 0.86rem;
+  }
 }
 </style>

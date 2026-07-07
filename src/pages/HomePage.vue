@@ -1,6 +1,12 @@
 <template>
   <QLayout view="lHh Lpr lFf" class="home-layout">
-    <AppNavBar active="home" @navigate="handleNavigate" @logout="handleLogout" />
+    <AppNavBar
+      active="home"
+      :open-total="openTotal"
+      :received-total="receivedTotal"
+      @navigate="handleNavigate"
+      @logout="handleLogout"
+    />
 
     <QPageContainer>
       <QPage class="home-page">
@@ -122,7 +128,7 @@ const $q = useQuasar()
 const router = useRouter()
 
 const { token } = storeToRefs(authStore)
-const { errorMessage: orderErrorMessage, saving } = storeToRefs(ordersStore)
+const { errorMessage: orderErrorMessage, openTotal, receivedTotal, saving } = storeToRefs(ordersStore)
 const { errorMessage: productsErrorMessage, items: products, loading: productsLoading } = storeToRefs(productsStore)
 
 const clienteNome = ref('')
@@ -160,13 +166,7 @@ watch(orderErrorMessage, (message) => {
     return
   }
 
-  $q.notify({
-    type: 'negative',
-    message,
-    position: 'top',
-    timeout: 2600,
-    progress: true,
-  })
+  $q.notify({ type: 'negative', message, position: 'top', timeout: 2600, progress: true })
 })
 
 watch(productsErrorMessage, (message) => {
@@ -174,13 +174,7 @@ watch(productsErrorMessage, (message) => {
     return
   }
 
-  $q.notify({
-    type: 'negative',
-    message,
-    position: 'top',
-    timeout: 2600,
-    progress: true,
-  })
+  $q.notify({ type: 'negative', message, position: 'top', timeout: 2600, progress: true })
 })
 
 onMounted(async () => {
@@ -189,17 +183,14 @@ onMounted(async () => {
   }
 
   try {
-    await productsStore.loadProducts(token.value)
+    await Promise.all([productsStore.loadProducts(token.value), ordersStore.loadOrders(token.value)])
   } catch {
     return
   }
 })
 
 function formatCurrency(value: number) {
-  return new Intl.NumberFormat('pt-BR', {
-    style: 'currency',
-    currency: 'BRL',
-  }).format(value)
+  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value)
 }
 
 function getProductQuantity(productId: string) {
@@ -215,7 +206,6 @@ function incrementProduct(productId: string) {
 
 function decrementProduct(productId: string) {
   const nextQuantity = Math.max(0, getProductQuantity(productId) - 1)
-
   quantities.value = {
     ...quantities.value,
     [productId]: nextQuantity,
@@ -239,10 +229,7 @@ async function handleCreateOrder(mode: OrderPaymentMode) {
     const createdOrder = await ordersStore.createNewOrder(token.value, {
       clienteNome: clienteNome.value.trim(),
       formaPagamento: mode,
-      itens: selectedItems.value.map((item) => ({
-        produtoId: item.produtoId,
-        quantidade: item.quantidade,
-      })),
+      itens: selectedItems.value.map((item) => ({ produtoId: item.produtoId, quantidade: item.quantidade })),
     })
 
     $q.notify({
@@ -263,8 +250,9 @@ async function handleCreateOrder(mode: OrderPaymentMode) {
   }
 }
 
-async function handleNavigate(target: 'home' | 'produtos') {
-  await router.push(target === 'home' ? '/home' : '/produtos')
+async function handleNavigate(target: 'home' | 'produtos' | 'pedidos') {
+  const nextPath = target === 'home' ? '/home' : target === 'produtos' ? '/produtos' : '/pedidos'
+  await router.push(nextPath)
 }
 
 async function handleLogout() {

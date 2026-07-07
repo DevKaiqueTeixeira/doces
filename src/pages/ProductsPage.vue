@@ -1,6 +1,12 @@
 <template>
   <QLayout view="lHh Lpr lFf" class="products-layout">
-    <AppNavBar active="produtos" @navigate="handleNavigate" @logout="handleLogout" />
+    <AppNavBar
+      active="produtos"
+      :open-total="openTotal"
+      :received-total="receivedTotal"
+      @navigate="handleNavigate"
+      @logout="handleLogout"
+    />
 
     <QPageContainer>
       <QPage class="products-page">
@@ -10,6 +16,7 @@
               label="Cadastrar novo produto"
               icon="add"
               :full-width="false"
+              compact
               @click="openCreateDialog"
             />
           </QCardSection>
@@ -108,6 +115,18 @@
         </QCardSection>
       </QCard>
     </QDialog>
+
+    <BaseConfirmDialog
+      v-model="confirmDialog.open.value"
+      :title="confirmDialog.options.value.title"
+      :message="confirmDialog.options.value.message"
+      :confirm-label="confirmDialog.options.value.confirmLabel"
+      :cancel-label="confirmDialog.options.value.cancelLabel"
+      :tone="confirmDialog.options.value.tone"
+      :loading="confirmDialog.loading.value"
+      @cancel="confirmDialog.cancel"
+      @confirm="handleConfirmDelete"
+    />
   </QLayout>
 </template>
 
@@ -119,12 +138,14 @@ import { useRouter } from 'vue-router'
 
 import AppNavBar from '../components/AppNavBar.vue'
 import BaseButton from '../components/base/BaseButton.vue'
+import BaseConfirmDialog from '../components/base/BaseConfirmDialog.vue'
 import BaseInput from '../components/base/BaseInput.vue'
 import BaseTable from '../components/base/BaseTable.vue'
 import { useAuthStore } from '../stores/auth'
+import { useOrdersStore } from '../stores/orders'
 import { useProductsStore } from '../stores/products'
 import type { Product } from '../types/products'
-import { showConfirmNotify } from '../utils/confirm-notify'
+import { useConfirmDialog } from '../utils/use-confirm-dialog'
 
 const columns = [
   { name: 'nome', label: 'Produto', field: 'nome', align: 'left' as const, sortable: true },
@@ -133,17 +154,21 @@ const columns = [
 ]
 
 const authStore = useAuthStore()
+const ordersStore = useOrdersStore()
 const productsStore = useProductsStore()
 const $q = useQuasar()
 const router = useRouter()
 
 const { token } = storeToRefs(authStore)
+const { openTotal, receivedTotal } = storeToRefs(ordersStore)
 const { deletingId, errorMessage, items, loading, saving } = storeToRefs(productsStore)
 
+const confirmDialog = useConfirmDialog()
 const dialogOpen = ref(false)
 const editingProductId = ref('')
 const dialogFormRef = ref<InstanceType<typeof QForm> | null>(null)
 const productForm = ref({ nome: '', preco: '' })
+const pendingDeleteProductId = ref('')
 
 const productNameRules = [
   (value: string | number | null | undefined) => Boolean(String(value ?? '').trim()) || 'Informe o nome do produto',
@@ -187,7 +212,7 @@ onMounted(async () => {
   }
 
   try {
-    await productsStore.loadProducts(token.value)
+    await Promise.all([productsStore.loadProducts(token.value), ordersStore.loadOrders(token.value)])
   } catch {
     return
   }
@@ -272,30 +297,37 @@ async function handleSaveProduct() {
 }
 
 async function handleDeleteProduct(productId: string) {
-  if (!token.value) {
-    return
-  }
+  pendingDeleteProductId.value = productId
 
-  const shouldDelete = await showConfirmNotify($q, {
+  await confirmDialog.ask({
+    title: 'Excluir produto',
     message: 'Deseja excluir esse produto?',
     confirmLabel: 'Excluir',
     cancelLabel: 'Cancelar',
+    tone: 'danger',
   })
+}
 
-  if (!shouldDelete) {
+async function handleConfirmDelete() {
+  if (!token.value || !pendingDeleteProductId.value) {
+    confirmDialog.cancel()
     return
   }
 
   try {
-    await productsStore.removeProduct(token.value, productId)
+    await productsStore.removeProduct(token.value, pendingDeleteProductId.value)
     $q.notify({ type: 'positive', message: 'Produto excluido com sucesso.', position: 'top', timeout: 2200 })
+    confirmDialog.finish()
+    pendingDeleteProductId.value = ''
   } catch {
+    confirmDialog.cancel()
     return
   }
 }
 
-async function handleNavigate(target: 'home' | 'produtos') {
-  await router.push(target === 'home' ? '/home' : '/produtos')
+async function handleNavigate(target: 'home' | 'produtos' | 'pedidos') {
+  const nextPath = target === 'home' ? '/home' : target === 'produtos' ? '/produtos' : '/pedidos'
+  await router.push(nextPath)
 }
 
 async function handleLogout() {

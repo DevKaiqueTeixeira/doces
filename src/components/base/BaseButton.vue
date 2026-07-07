@@ -29,8 +29,9 @@ const props = withDefaults(
     loading?: boolean
     disabled?: boolean
     color?: string
-    variant?: 'solid' | 'ghost' | 'danger'
+    variant?: 'solid' | 'ghost' | 'danger' | 'success'
     fullWidth?: boolean
+    compact?: boolean
   }>(),
   {
     type: 'button',
@@ -41,6 +42,7 @@ const props = withDefaults(
     color: 'primary',
     variant: 'solid',
     fullWidth: true,
+    compact: false,
   },
 )
 
@@ -48,6 +50,8 @@ const buttonClassName = computed(() => ({
   'base-button--full': props.fullWidth,
   'base-button--ghost': props.variant === 'ghost',
   'base-button--danger': props.variant === 'danger',
+  'base-button--success': props.variant === 'success',
+  'base-button--compact': props.compact,
 }))
 
 const buttonColor = computed(() => {
@@ -57,6 +61,10 @@ const buttonColor = computed(() => {
 
   if (props.variant === 'danger') {
     return 'negative'
+  }
+
+  if (props.variant === 'success') {
+    return 'positive'
   }
 
   return props.color
@@ -87,6 +95,13 @@ const buttonTextColor = computed(() => {
   width: 100%;
 }
 
+.base-button--compact {
+  min-height: 42px;
+  border-radius: 14px;
+  font-size: 0.86rem;
+  letter-spacing: 0.03em;
+}
+
 .base-button:not(.base-button--ghost):not(.base-button--danger) {
   background: linear-gradient(135deg, #c084fc 0%, #9333ea 100%);
 }
@@ -98,6 +113,10 @@ const buttonTextColor = computed(() => {
 
 .base-button--danger {
   background: linear-gradient(135deg, #fb7185 0%, #e11d48 100%);
+}
+
+.base-button--success {
+  background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
 }
 
 .base-button:hover:not(.disabled) {
@@ -145,6 +164,11 @@ const buttonTextColor = computed(() => {
 @media (max-width: 640px) {
   .base-button {
     letter-spacing: 0.04em;
+  }
+
+  .base-button--compact {
+    min-height: 40px;
+    font-size: 0.82rem;
   }
 }
 </style>
