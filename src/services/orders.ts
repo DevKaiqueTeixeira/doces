@@ -2,16 +2,20 @@ import type {
   CreateOrderPayload,
   OrderListResponse,
   OrderResponse,
+  PartialOrderPaymentPayload,
   UpdateOrderItemsPayload,
 } from '../types/orders'
 import { apiUrl } from './api'
 
-function getErrorMessage(payload: { message?: string } | OrderResponse | OrderListResponse | null) {
+function getErrorMessage(
+  payload: { message?: string } | OrderResponse | OrderListResponse | null,
+  fallbackMessage: string,
+) {
   if (payload && 'message' in payload && typeof payload.message === 'string') {
     return payload.message
   }
 
-  return 'Nao foi possivel cadastrar o pedido.'
+  return fallbackMessage
 }
 
 export async function createOrder(token: string, payload: CreateOrderPayload) {
@@ -27,7 +31,7 @@ export async function createOrder(token: string, payload: CreateOrderPayload) {
   const responsePayload = (await response.json().catch(() => null)) as OrderResponse | { message?: string } | null
 
   if (!response.ok) {
-    throw new Error(getErrorMessage(responsePayload))
+    throw new Error(getErrorMessage(responsePayload, 'Nao foi possivel cadastrar o pedido.'))
   }
 
   if (!responsePayload || !('pedido' in responsePayload)) {
@@ -47,7 +51,7 @@ export async function fetchOrders(token: string) {
   const responsePayload = (await response.json().catch(() => null)) as OrderListResponse | { message?: string } | null
 
   if (!response.ok) {
-    throw new Error(getErrorMessage(responsePayload))
+    throw new Error(getErrorMessage(responsePayload, 'Nao foi possivel buscar os pedidos.'))
   }
 
   if (!responsePayload || !('pedidos' in responsePayload)) {
@@ -68,11 +72,34 @@ export async function closeOrder(token: string, orderId: string) {
   const responsePayload = (await response.json().catch(() => null)) as OrderResponse | { message?: string } | null
 
   if (!response.ok) {
-    throw new Error(getErrorMessage(responsePayload))
+    throw new Error(getErrorMessage(responsePayload, 'Nao foi possivel receber o pagamento.'))
   }
 
   if (!responsePayload || !('pedido' in responsePayload)) {
     throw new Error('Resposta de encerramento invalida.')
+  }
+
+  return responsePayload.pedido
+}
+
+export async function payOrderPartially(token: string, orderId: string, payload: PartialOrderPaymentPayload) {
+  const response = await fetch(`${apiUrl}/pedidos/${orderId}/pagamento-parcial`, {
+    method: 'PUT',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  })
+
+  const responsePayload = (await response.json().catch(() => null)) as OrderResponse | { message?: string } | null
+
+  if (!response.ok) {
+    throw new Error(getErrorMessage(responsePayload, 'Nao foi possivel registrar o pagamento parcial.'))
+  }
+
+  if (!responsePayload || !('pedido' in responsePayload)) {
+    throw new Error('Resposta de pagamento parcial invalida.')
   }
 
   return responsePayload.pedido
@@ -91,7 +118,7 @@ export async function addItemsToOrder(token: string, orderId: string, payload: U
   const responsePayload = (await response.json().catch(() => null)) as OrderResponse | { message?: string } | null
 
   if (!response.ok) {
-    throw new Error(getErrorMessage(responsePayload))
+    throw new Error(getErrorMessage(responsePayload, 'Nao foi possivel atualizar o pedido.'))
   }
 
   if (!responsePayload || !('pedido' in responsePayload)) {

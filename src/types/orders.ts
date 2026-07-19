@@ -25,6 +25,7 @@ export interface CreatedOrder {
   clienteNome: string
   formaPagamento: OrderPaymentMode
   total: number
+  pagamentoParcial: number
   usuarioNome: string
   createdAt: string
   updatedAt?: string
@@ -41,4 +42,8 @@ export interface OrderListResponse {
 
 export interface UpdateOrderItemsPayload {
   itens: OrderItemPayload[]
+}
+
+export interface PartialOrderPaymentPayload {
+  valorRecebido: number
 }

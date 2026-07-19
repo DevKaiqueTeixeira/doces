@@ -3,6 +3,10 @@ export type ParsedOrderItem = {
   quantidade: number
 }
 
+export type ParsedOrderPartialPayment = {
+  valorRecebido: number
+}
+
 export type ProductRow = {
   id: string
   nome: string
@@ -36,6 +40,7 @@ export type PedidoRow = {
   cliente_nome: string
   forma_pagamento: 'aberto' | 'avista'
   total: number
+  pagamento_parcial: number
   usuario_nome: string
   created_at: string
   updated_at: string
@@ -131,12 +136,33 @@ export function parseOrderItemsPayload(body: unknown) {
   }
 }
 
+export function parseOrderPartialPaymentPayload(body: unknown) {
+  const payload = body as Record<string, unknown>
+  const rawValue = payload?.valorRecebido
+  const valorRecebido =
+    typeof rawValue === 'number'
+      ? rawValue
+      : typeof rawValue === 'string'
+        ? Number(rawValue.trim().replace(',', '.'))
+        : Number.NaN
+  const normalizedAmount = Number.isFinite(valorRecebido) ? Number(valorRecebido.toFixed(2)) : Number.NaN
+
+  if (!Number.isFinite(valorRecebido) || normalizedAmount <= 0) {
+    throw new Error('Informe um valor valido para o pagamento parcial.')
+  }
+
+  return {
+    valorRecebido: normalizedAmount,
+  }
+}
+
 export function formatPedido(pedido: PedidoRow) {
   return {
     id: pedido.id,
     clienteNome: pedido.cliente_nome,
     formaPagamento: pedido.forma_pagamento,
     total: Number(pedido.total),
+    pagamentoParcial: Number(pedido.pagamento_parcial ?? 0),
     createdAt: pedido.created_at,
     updatedAt: pedido.updated_at,
     usuarioNome: pedido.usuario_nome,

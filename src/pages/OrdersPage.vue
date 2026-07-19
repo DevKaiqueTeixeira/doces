@@ -14,6 +14,7 @@
           <QCardSection>
             <div class="orders-filters">
               <QInput
+                ref="searchInputRef"
                 v-model="searchTerm"
                 outlined
                 dense
@@ -24,11 +25,34 @@
                 placeholder="Pesquisar cliente"
                 input-class="orders-filters__input"
                 class="orders-filters__search"
+                @clear="handleClearSearch"
               >
                 <template #prepend>
                   <QIcon name="search" color="primary" />
                 </template>
               </QInput>
+
+              <QSelect
+                v-model="ownerFilter"
+                outlined
+                dense
+                emit-value
+                map-options
+                hide-bottom-space
+                stack-label
+                color="primary"
+                bg-color="white"
+                label="Feito por"
+                :options="ownerOptions"
+                options-dense
+                popup-content-class="orders-status-menu"
+                class="orders-filters__select"
+                input-class="orders-filters__input orders-filters__input--select"
+              >
+                <template #prepend>
+                  <QIcon name="badge" color="primary" />
+                </template>
+              </QSelect>
 
               <QSelect
                 v-model="statusFilter"
@@ -73,12 +97,20 @@
                 <QTd :props="props">
                   <QChip
                     dense
-                    :color="props.row.formaPagamento === 'aberto' ? 'orange-8' : 'positive'"
+                    :color="getOrderStatusColor(props.row)"
                     text-color="white"
                   >
-                    {{ props.row.formaPagamento === 'aberto' ? 'Em aberto' : 'Recebido' }}
+                    {{ getOrderStatusLabel(props.row) }}
                   </QChip>
                 </QTd>
+              </template>
+
+              <template #body-cell-pagamentoParcial="props">
+                <QTd :props="props">{{ formatCurrency(getOrderReceivedAmount(props.row)) }}</QTd>
+              </template>
+
+              <template #body-cell-valorPendente="props">
+                <QTd :props="props">{{ formatCurrency(getOrderPendingAmount(props.row)) }}</QTd>
               </template>
 
               <template #body-cell-actions="props">
@@ -114,7 +146,7 @@
                     aria-label="Receber pagamento"
                     :loading="closingId === props.row.id"
                     :disable="props.row.formaPagamento !== 'aberto' || updatingId === props.row.id"
-                    @click="handleCloseOrder(props.row.id)"
+                    @click="openPaymentDialog(props.row)"
                   />
                 </QTd>
               </template>
@@ -217,10 +249,91 @@
           </div>
         </QCardSection>
       </QCard>
-    </QDialog>
+      </QDialog>
 
-    <QDialog v-model="chargeDialogOpen">
-      <QCard flat class="charge-dialog">
+      <QDialog v-model="paymentDialogOpen" persistent>
+        <QCard flat class="payment-dialog">
+          <QCardSection v-if="paymentOrder" class="payment-dialog__content">
+            <div class="payment-dialog__header">
+              <h2>Receber pagamento</h2>
+              <p>Escolha se o valor recebido foi total ou parcial.</p>
+            </div>
+
+            <div class="payment-dialog__summary">
+              <section class="payment-dialog__summary-card payment-dialog__summary-card--client entity-pair entity-pair--person">
+                <small class="entity-pair__label">Cliente</small>
+                <strong class="entity-pair__value">{{ paymentOrder.clienteNome }}</strong>
+              </section>
+
+              <section class="payment-dialog__summary-card payment-dialog__summary-card--amount entity-pair">
+                <small class="entity-pair__label">Total do pedido</small>
+                <strong class="entity-pair__value">{{ formatCurrency(paymentOrder.total) }}</strong>
+              </section>
+
+              <section class="payment-dialog__summary-card entity-pair">
+                <small class="entity-pair__label">Ja recebido</small>
+                <strong class="entity-pair__value">{{ formatCurrency(paymentReceivedAmount) }}</strong>
+              </section>
+
+              <section class="payment-dialog__summary-card entity-pair">
+                <small class="entity-pair__label">Falta receber</small>
+                <strong class="entity-pair__value">{{ formatCurrency(paymentPendingAmount) }}</strong>
+              </section>
+            </div>
+
+            <QInput
+              v-model="partialPaymentValue"
+              outlined
+              dense
+              clearable
+              hide-bottom-space
+              type="text"
+              inputmode="decimal"
+              color="primary"
+              bg-color="white"
+              placeholder="Valor recebido agora"
+              class="payment-dialog__input"
+              input-class="orders-filters__input"
+              :disable="closingId === paymentOrder.id"
+              :error="Boolean(partialPaymentError)"
+              :error-message="partialPaymentError"
+            >
+              <template #prepend>
+                <QIcon name="attach_money" color="primary" />
+              </template>
+            </QInput>
+
+            <div class="payment-dialog__actions">
+              <BaseButton
+                label="Cancelar"
+                variant="ghost"
+                :disabled="closingId === paymentOrder.id"
+                @click="closePaymentDialog"
+              />
+
+              <BaseButton
+                label="Pagar parcialmente"
+                icon-right="payments"
+                :loading="closingId === paymentOrder.id && paymentAction === 'partial'"
+                :disabled="!canSubmitPartialPayment"
+                @click="handleReceivePartialPayment"
+              />
+
+              <BaseButton
+                label="Receber pagamento"
+                icon-right="check"
+                variant="success"
+                :loading="closingId === paymentOrder.id && paymentAction === 'full'"
+                :disabled="closingId === paymentOrder.id"
+                @click="handleReceiveFullPayment"
+              />
+            </div>
+          </QCardSection>
+        </QCard>
+      </QDialog>
+
+      <QDialog v-model="chargeDialogOpen">
+        <QCard flat class="charge-dialog">
         <QCardSection v-if="chargeOrder" class="charge-dialog__content">
           <div class="charge-dialog__header">
             <h2>Cobrar cliente</h2>
@@ -235,6 +348,16 @@
             <span class="charge-dialog__meta-item charge-dialog__meta-item--total entity-pair">
               <small class="entity-pair__label">Total do pedido</small>
               <strong class="entity-pair__value">{{ formatCurrency(chargeOrder.total) }}</strong>
+            </span>
+
+            <span class="charge-dialog__meta-item entity-pair">
+              <small class="entity-pair__label">Ja recebido</small>
+              <strong class="entity-pair__value">{{ formatCurrency(getOrderReceivedAmount(chargeOrder)) }}</strong>
+            </span>
+
+            <span class="charge-dialog__meta-item entity-pair">
+              <small class="entity-pair__label">Falta receber</small>
+              <strong class="entity-pair__value">{{ formatCurrency(getOrderPendingAmount(chargeOrder)) }}</strong>
             </span>
           </div>
 
@@ -287,37 +410,24 @@
         </QCardSection>
       </QCard>
     </QDialog>
-
-    <BaseConfirmDialog
-      v-model="confirmDialog.open.value"
-      :title="confirmDialog.options.value.title"
-      :message="confirmDialog.options.value.message"
-      :confirm-label="confirmDialog.options.value.confirmLabel"
-      :cancel-label="confirmDialog.options.value.cancelLabel"
-      :tone="confirmDialog.options.value.tone"
-      :loading="confirmDialog.loading.value"
-      @cancel="confirmDialog.cancel"
-      @confirm="handleConfirmCloseOrder"
-    />
   </QLayout>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { QBtn, QCard, QCardSection, QChip, QDialog, QIcon, QInput, QLayout, QPage, QPageContainer, QSelect, QTd, QTooltip, useQuasar } from 'quasar'
 import { useRouter } from 'vue-router'
 
 import AppNavBar from '../components/AppNavBar.vue'
 import BaseButton from '../components/base/BaseButton.vue'
-import BaseConfirmDialog from '../components/base/BaseConfirmDialog.vue'
 import BaseTable from '../components/base/BaseTable.vue'
 import { useAuthStore } from '../stores/auth'
 import { useOrdersStore } from '../stores/orders'
 import { useProductsStore } from '../stores/products'
 import type { CreatedOrder } from '../types/orders'
-import { useConfirmDialog } from '../utils/use-confirm-dialog'
 import { buildOrderChargeMessage } from '../utils/order-charge'
+import { getOrderPendingAmount, getOrderReceivedAmount, hasPartialPayment } from '../utils/order-payment'
 
 type EditableOrderProduct = {
   id: string
@@ -333,6 +443,20 @@ const columns = [
   { name: 'clienteNome', label: 'Cliente', field: 'clienteNome', align: 'left' as const, sortable: true },
   { name: 'formaPagamento', label: 'Status', field: 'formaPagamento', align: 'left' as const, sortable: true },
   { name: 'total', label: 'Total', field: 'total', align: 'left' as const, sortable: true },
+  {
+    name: 'pagamentoParcial',
+    label: 'Pago',
+    field: (row: CreatedOrder) => getOrderReceivedAmount(row),
+    align: 'left' as const,
+    sortable: true,
+  },
+  {
+    name: 'valorPendente',
+    label: 'Falta',
+    field: (row: CreatedOrder) => getOrderPendingAmount(row),
+    align: 'left' as const,
+    sortable: true,
+  },
   { name: 'usuarioNome', label: 'Feito por', field: 'usuarioNome', align: 'left' as const, sortable: true },
   { name: 'updatedAt', label: 'Data', field: 'updatedAt', align: 'left' as const, sortable: true },
 ]
@@ -349,16 +473,20 @@ const { token } = storeToRefs(authStore)
 const { closingId, errorMessage, items, loading, openTotal, receivedTotal, saving, updatingId } = storeToRefs(ordersStore)
 const { items: products } = storeToRefs(productsStore)
 
-const confirmDialog = useConfirmDialog()
 const chargeDialogOpen = ref(false)
 const dialogOpen = ref(false)
+const paymentDialogOpen = ref(false)
+const searchInputRef = ref<{ focus?: () => void } | null>(null)
 const editingOrderId = ref('')
 const chargeOrderId = ref('')
-const searchTerm = ref('')
+const paymentOrderId = ref('')
+const paymentAction = ref<'full' | 'partial' | ''>('')
+const searchTerm = ref<string | null>('')
 const statusFilter = ref<OrderStatusFilter>('todos')
+const ownerFilter = ref('todos')
 const editableQuantities = ref<Record<string, number>>({})
 const baseQuantities = ref<Record<string, number>>({})
-const pendingCloseOrderId = ref('')
+const partialPaymentValue = ref('')
 
 const statusOptions = [
   { label: 'Todos', value: 'todos' },
@@ -366,8 +494,33 @@ const statusOptions = [
   { label: 'Recebido', value: 'avista' },
 ] as const
 
+const ownerOptions = computed(() => {
+  const owners = new Map<string, string>([
+    ['jessy', 'Jessy'],
+    ['lis', 'Lis'],
+  ])
+
+  for (const order of items.value) {
+    const normalizedName = order.usuarioNome.trim().toLowerCase()
+
+    if (!normalizedName || owners.has(normalizedName)) {
+      continue
+    }
+
+    owners.set(normalizedName, formatOwnerLabel(order.usuarioNome))
+  }
+
+  return [
+    { label: 'Todos', value: 'todos' },
+    ...[...owners.entries()]
+      .sort((left, right) => left[1].localeCompare(right[1], 'pt-BR'))
+      .map(([value, label]) => ({ label, value })),
+  ]
+})
+
 const editingOrder = computed(() => items.value.find((order) => order.id === editingOrderId.value) ?? null)
 const chargeOrder = computed(() => items.value.find((order) => order.id === chargeOrderId.value) ?? null)
+const paymentOrder = computed(() => items.value.find((order) => order.id === paymentOrderId.value) ?? null)
 
 const editableProducts = computed<EditableOrderProduct[]>(() => {
   const productMap = new Map<string, EditableOrderProduct>()
@@ -418,11 +571,52 @@ const chargeMessage = computed(() => {
 
 const canShareMessage = computed(() => typeof navigator !== 'undefined' && typeof navigator.share === 'function')
 
+const paymentReceivedAmount = computed(() => (paymentOrder.value ? getOrderReceivedAmount(paymentOrder.value) : 0))
+const paymentPendingAmount = computed(() => (paymentOrder.value ? getOrderPendingAmount(paymentOrder.value) : 0))
+
+const partialPaymentAmount = computed(() => {
+  const normalizedValue = String(partialPaymentValue.value ?? '').trim().replace(',', '.')
+  return normalizedValue ? Number(normalizedValue) : Number.NaN
+})
+
+const partialPaymentError = computed(() => {
+  if (!paymentOrder.value || !String(partialPaymentValue.value ?? '').trim()) {
+    return ''
+  }
+
+  if (!Number.isFinite(partialPaymentAmount.value) || partialPaymentAmount.value <= 0) {
+    return 'Informe um valor maior que zero.'
+  }
+
+  if (paymentPendingAmount.value <= 0) {
+    return 'Esse pedido nao possui saldo em aberto.'
+  }
+
+  if (partialPaymentAmount.value > paymentPendingAmount.value) {
+    return `O valor nao pode ser maior que ${formatCurrency(paymentPendingAmount.value)}.`
+  }
+
+  return ''
+})
+
+const canSubmitPartialPayment = computed(() => {
+  return (
+    Boolean(paymentOrder.value) &&
+    Boolean(String(partialPaymentValue.value ?? '').trim()) &&
+    !partialPaymentError.value &&
+    closingId.value !== paymentOrder.value?.id
+  )
+})
+
 const filteredOrders = computed(() => {
-  const normalizedSearch = searchTerm.value.trim().toLowerCase()
+  const normalizedSearch = String(searchTerm.value ?? '').trim().toLowerCase()
 
   return items.value.filter((order) => {
     if (statusFilter.value !== 'todos' && order.formaPagamento !== statusFilter.value) {
+      return false
+    }
+
+    if (ownerFilter.value !== 'todos' && order.usuarioNome.trim().toLowerCase() !== ownerFilter.value) {
       return false
     }
 
@@ -435,6 +629,8 @@ const filteredOrders = computed(() => {
       order.usuarioNome,
       formatDate(order.updatedAt ?? order.createdAt),
       formatCurrency(order.total),
+      formatCurrency(getOrderReceivedAmount(order)),
+      formatCurrency(getOrderPendingAmount(order)),
     ]
       .join(' ')
       .toLowerCase()
@@ -444,15 +640,15 @@ const filteredOrders = computed(() => {
 })
 
 const ordersEmptyText = computed(() => {
-  if (searchTerm.value.trim() || statusFilter.value !== 'todos') {
-    return 'Cliente nao encontrado! Pesquise outro nome.'
+  if (String(searchTerm.value ?? '').trim() || statusFilter.value !== 'todos' || ownerFilter.value !== 'todos') {
+    return 'Nenhum pedido encontrado com esses filtros.'
   }
 
   return 'Nenhum pedido cadastrado ainda.'
 })
 
 const ordersEmptyIcon = computed(() => {
-  if (searchTerm.value.trim() || statusFilter.value !== 'todos') {
+  if (String(searchTerm.value ?? '').trim() || statusFilter.value !== 'todos' || ownerFilter.value !== 'todos') {
     return 'person_search'
   }
 
@@ -490,12 +686,46 @@ function formatDate(value: string) {
   }).format(new Date(value))
 }
 
+function formatOwnerLabel(value: string) {
+  const normalizedValue = value.trim()
+
+  if (!normalizedValue) {
+    return ''
+  }
+
+  return normalizedValue.charAt(0).toUpperCase() + normalizedValue.slice(1)
+}
+
 function getBaseQuantity(productId: string) {
   return baseQuantities.value[productId] ?? 0
 }
 
 function getEditableQuantity(productId: string) {
   return editableQuantities.value[productId] ?? 0
+}
+
+function getOrderStatusLabel(order: CreatedOrder) {
+  if (order.formaPagamento === 'avista') {
+    return 'Recebido'
+  }
+
+  if (hasPartialPayment(order)) {
+    return 'Parcial'
+  }
+
+  return 'Em aberto'
+}
+
+function getOrderStatusColor(order: CreatedOrder) {
+  if (order.formaPagamento === 'avista') {
+    return 'positive'
+  }
+
+  if (hasPartialPayment(order)) {
+    return 'amber-8'
+  }
+
+  return 'orange-8'
 }
 
 function openAddModal(order: CreatedOrder) {
@@ -508,6 +738,19 @@ function openAddModal(order: CreatedOrder) {
 function openChargeModal(order: CreatedOrder) {
   chargeOrderId.value = order.id
   chargeDialogOpen.value = true
+}
+
+function openPaymentDialog(order: CreatedOrder) {
+  paymentOrderId.value = order.id
+  partialPaymentValue.value = ''
+  paymentAction.value = ''
+  paymentDialogOpen.value = true
+}
+
+async function handleClearSearch() {
+  searchTerm.value = ''
+  await nextTick()
+  searchInputRef.value?.focus?.()
 }
 
 function closeDialog() {
@@ -526,6 +769,17 @@ function closeChargeDialog() {
   chargeOrderId.value = ''
 }
 
+function closePaymentDialog() {
+  if (paymentOrder.value && closingId.value === paymentOrder.value.id) {
+    return
+  }
+
+  paymentDialogOpen.value = false
+  paymentOrderId.value = ''
+  partialPaymentValue.value = ''
+  paymentAction.value = ''
+}
+
 function incrementEditableProduct(productId: string) {
   editableQuantities.value = {
     ...editableQuantities.value,
@@ -540,18 +794,6 @@ function decrementEditableProduct(productId: string) {
     ...editableQuantities.value,
     [productId]: nextQuantity,
   }
-}
-
-async function handleCloseOrder(orderId: string) {
-  pendingCloseOrderId.value = orderId
-
-  await confirmDialog.ask({
-    title: 'Receber pagamento',
-    message: 'Deseja receber o pagamento desse pedido?',
-    confirmLabel: 'Receber pagamento',
-    cancelLabel: 'Cancelar',
-    tone: 'success',
-  })
 }
 
 async function handleCopyChargeMessage() {
@@ -582,20 +824,50 @@ async function handleShareChargeMessage() {
   }
 }
 
-async function handleConfirmCloseOrder() {
-  if (!token.value || !pendingCloseOrderId.value) {
-    confirmDialog.cancel()
+async function handleReceiveFullPayment() {
+  if (!token.value || !paymentOrder.value) {
     return
   }
 
+  paymentAction.value = 'full'
+
   try {
-    await ordersStore.closeExistingOrder(token.value, pendingCloseOrderId.value)
+    await ordersStore.closeExistingOrder(token.value, paymentOrder.value.id)
     $q.notify({ type: 'positive', message: 'Pagamento recebido com sucesso.', position: 'bottom', timeout: 2200 })
-    confirmDialog.finish()
-    pendingCloseOrderId.value = ''
+    closePaymentDialog()
   } catch {
-    confirmDialog.cancel()
     return
+  } finally {
+    paymentAction.value = ''
+  }
+}
+
+async function handleReceivePartialPayment() {
+  if (!token.value || !paymentOrder.value || !canSubmitPartialPayment.value) {
+    return
+  }
+
+  paymentAction.value = 'partial'
+
+  try {
+    const updatedOrder = await ordersStore.receiveExistingOrderPartialPayment(token.value, paymentOrder.value.id, {
+      valorRecebido: Number(partialPaymentAmount.value.toFixed(2)),
+    })
+
+    $q.notify({
+      type: 'positive',
+      message:
+        updatedOrder.formaPagamento === 'avista'
+          ? 'Pagamento finalizado com sucesso.'
+          : 'Pagamento parcial registrado com sucesso.',
+      position: 'bottom',
+      timeout: 2200,
+    })
+    closePaymentDialog()
+  } catch {
+    return
+  } finally {
+    paymentAction.value = ''
   }
 }
 
@@ -639,7 +911,8 @@ async function handleLogout() {
 }
 
 .orders-card,
-.order-dialog {
+.order-dialog,
+.payment-dialog {
   border-radius: 28px;
   background: rgba(255, 255, 255, 0.97);
   box-shadow: 0 22px 48px rgba(76, 29, 149, 0.12);
@@ -647,9 +920,13 @@ async function handleLogout() {
 
 .orders-filters {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 148px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
   margin-bottom: 18px;
+}
+
+.orders-filters__search {
+  grid-column: 1 / -1;
 }
 
 .orders-filters__search,
@@ -770,6 +1047,126 @@ async function handleLogout() {
 
 .order-dialog {
   width: min(100vw - 24px, 560px);
+}
+
+.payment-dialog {
+  width: min(100vw - 24px, 620px);
+}
+
+.payment-dialog__content {
+  display: grid;
+  gap: 16px;
+}
+
+.payment-dialog__header {
+  display: grid;
+  gap: 6px;
+  text-align: center;
+}
+
+.payment-dialog__header h2 {
+  margin: 0;
+  color: #3b0764;
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+.payment-dialog__header p {
+  margin: 0;
+  color: #6b21a8;
+}
+
+.payment-dialog__summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.payment-dialog__summary-card {
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+  padding: 14px 16px;
+  border-radius: 20px;
+  background: #faf5ff;
+  border: 1px solid rgba(196, 181, 253, 0.55);
+}
+
+.payment-dialog__summary-card--client {
+  grid-column: 1 / -1;
+}
+
+.payment-dialog__summary-card--amount {
+  background: linear-gradient(135deg, rgba(236, 253, 245, 0.98), rgba(209, 250, 229, 0.96));
+  border-color: rgba(110, 231, 183, 0.7);
+}
+
+.payment-dialog__summary-card :deep(.entity-pair__label) {
+  color: #8b5cf6;
+}
+
+.payment-dialog__summary-card :deep(.entity-pair__value) {
+  color: #3b0764;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.payment-dialog__summary-card--amount :deep(.entity-pair__value) {
+  color: #111827;
+  font-size: 1.2rem;
+  font-weight: 800;
+}
+
+.payment-dialog__input:deep(.q-field__control) {
+  border-radius: 16px;
+  min-height: 48px;
+  padding-inline: 4px;
+  background: linear-gradient(180deg, #ffffff 0%, #fdfbff 100%);
+  box-shadow: none;
+}
+
+.payment-dialog__input:deep(.q-field__native),
+.payment-dialog__input:deep(.q-field__input) {
+  display: flex;
+  align-items: center;
+  min-height: 100%;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+.payment-dialog__input:deep(.q-field__control-container) {
+  height: 100%;
+}
+
+.payment-dialog__input:deep(.q-field__marginal) {
+  height: 48px;
+  align-items: center;
+}
+
+.payment-dialog__input:deep(.q-field__prepend),
+.payment-dialog__input:deep(.q-field__append) {
+  align-self: center;
+}
+
+.payment-dialog__input:deep(.q-field--outlined .q-field__control::before) {
+  border: 1px solid #c4b5fd;
+}
+
+.payment-dialog__input:deep(.q-field--focused.q-field--outlined .q-field__control::before) {
+  border: 1px solid #c4b5fd;
+}
+
+.payment-dialog__input:deep(.q-field--outlined .q-field__control::after) {
+  display: none;
+}
+
+.payment-dialog__input:deep(.q-field--focused .q-field__control) {
+  box-shadow: none;
+}
+
+.payment-dialog__actions {
+  display: grid;
+  gap: 12px;
 }
 
 .charge-dialog {
@@ -995,13 +1392,21 @@ async function handleLogout() {
   }
 
   .orders-filters {
-    grid-template-columns: minmax(0, 1fr) 200px;
+    grid-template-columns: minmax(0, 1fr) 180px 160px;
     gap: 12px;
     align-items: start;
   }
 
+  .orders-filters__search {
+    grid-column: auto;
+  }
+
   .order-dialog__actions {
     grid-template-columns: 1fr 1fr;
+  }
+
+  .payment-dialog__actions {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .charge-dialog__actions {
@@ -1011,13 +1416,21 @@ async function handleLogout() {
 
 @media (max-width: 640px) {
   .orders-filters {
-    grid-template-columns: minmax(0, 1fr) 130px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px;
     align-items: start;
   }
 
   .orders-filters__input {
     font-size: 0.88rem;
+  }
+
+  .payment-dialog__summary {
+    grid-template-columns: 1fr;
+  }
+
+  .payment-dialog__summary-card--client {
+    grid-column: auto;
   }
 }
 </style>

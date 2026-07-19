@@ -1,8 +1,12 @@
 import { getSupabaseAdmin } from '../../server/supabase.js'
 
-import { formatPedido, parseOrderItemsPayload, parseOrderPayload } from './domain.js'
+import { formatPedido, parseOrderItemsPayload, parseOrderPartialPaymentPayload, parseOrderPayload } from './domain.js'
 import type { AuthenticatedUser } from './auth.js'
 import type { OrderInsertItem, ParsedOrderItem, PedidoItemRow, PedidoRow, ProductRow } from './domain.js'
+
+const orderSelectFields = 'id, cliente_nome, forma_pagamento, total, pagamento_parcial, usuario_nome, created_at, updated_at'
+const orderWithItemsSelect = `${orderSelectFields}, pedido_itens(id, produto_id, produto_nome, quantidade, preco_unitario, subtotal)`
+const concurrentOrderUpdateMessage = 'O pedido foi atualizado por outra operacao. Recarregue a tela e tente novamente.'
 
 export async function createOrderRecord(authUser: AuthenticatedUser, body: unknown) {
   const payload = parseOrderPayload(body)
@@ -51,11 +55,12 @@ export async function createOrderRecord(authUser: AuthenticatedUser, body: unkno
       cliente_nome: payload.clienteNome,
       forma_pagamento: payload.formaPagamento,
       total,
+      pagamento_parcial: payload.formaPagamento === 'avista' ? total : 0,
       usuario_id: authUser.id,
       usuario_nome: authUser.nome,
       updated_at: now,
     })
-    .select('id, cliente_nome, forma_pagamento, total, usuario_nome, created_at, updated_at')
+    .select(orderSelectFields)
     .single()
 
   if (orderError) {
@@ -82,9 +87,7 @@ export async function listOrders() {
   const supabase = getSupabaseAdmin()
   const { data, error } = await supabase
     .from('pedidos')
-    .select(
-      'id, cliente_nome, forma_pagamento, total, usuario_nome, created_at, updated_at, pedido_itens(id, produto_id, produto_nome, quantidade, preco_unitario, subtotal)',
-    )
+    .select(orderWithItemsSelect)
     .order('created_at', { ascending: false })
 
   if (error) {
@@ -96,18 +99,86 @@ export async function listOrders() {
 
 export async function closeOrderRecord(orderId: string) {
   const supabase = getSupabaseAdmin()
+  const { data: currentOrder, error: currentOrderError } = await supabase
+    .from('pedidos')
+    .select(orderSelectFields)
+    .eq('id', orderId)
+    .single()
+
+  if (currentOrderError) {
+    throw currentOrderError
+  }
+
   const { data, error } = await supabase
     .from('pedidos')
     .update({
       forma_pagamento: 'avista',
+      pagamento_parcial: Number(currentOrder.total),
       updated_at: new Date().toISOString(),
     })
     .eq('id', orderId)
-    .select('id, cliente_nome, forma_pagamento, total, usuario_nome, created_at, updated_at')
-    .single()
+    .eq('forma_pagamento', currentOrder.forma_pagamento)
+    .eq('pagamento_parcial', currentOrder.pagamento_parcial)
+    .select(orderSelectFields)
+    .maybeSingle()
 
   if (error) {
     throw error
+  }
+
+  if (!data) {
+    throw new Error(concurrentOrderUpdateMessage)
+  }
+
+  return formatPedido(data as PedidoRow)
+}
+
+export async function receivePartialPaymentRecord(orderId: string, body: unknown) {
+  const payload = parseOrderPartialPaymentPayload(body)
+  const supabase = getSupabaseAdmin()
+  const { data: currentOrder, error: currentOrderError } = await supabase
+    .from('pedidos')
+    .select(orderSelectFields)
+    .eq('id', orderId)
+    .single()
+
+  if (currentOrderError) {
+    throw currentOrderError
+  }
+
+  const total = Number(currentOrder.total)
+  const paidAmount = Number(currentOrder.pagamento_parcial)
+
+  if (currentOrder.forma_pagamento === 'avista' || paidAmount >= total) {
+    throw new Error('O pedido ja foi recebido integralmente.')
+  }
+
+  const remainingAmount = Number((total - paidAmount).toFixed(2))
+
+  if (payload.valorRecebido > remainingAmount) {
+    throw new Error('O pagamento parcial nao pode ser maior que o valor restante do pedido.')
+  }
+
+  const nextPaidAmount = Number((paidAmount + payload.valorRecebido).toFixed(2))
+  const { data, error } = await supabase
+    .from('pedidos')
+    .update({
+      forma_pagamento: nextPaidAmount >= total ? 'avista' : 'aberto',
+      pagamento_parcial: nextPaidAmount,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', orderId)
+    .eq('forma_pagamento', currentOrder.forma_pagamento)
+    .eq('pagamento_parcial', currentOrder.pagamento_parcial)
+    .select(orderSelectFields)
+    .maybeSingle()
+
+  if (error) {
+    throw error
+  }
+
+  if (!data) {
+    throw new Error(concurrentOrderUpdateMessage)
   }
 
   return formatPedido(data as PedidoRow)
@@ -117,9 +188,9 @@ export async function updateOrderItemsRecord(orderId: string, body: unknown) {
   const payload = parseOrderItemsPayload(body)
   const supabase = getSupabaseAdmin()
 
-  const { error: orderError } = await supabase
+  const { data: order, error: orderError } = await supabase
     .from('pedidos')
-    .select('id')
+    .select(orderSelectFields)
     .eq('id', orderId)
     .single()
 
@@ -213,14 +284,18 @@ export async function updateOrderItemsRecord(orderId: string, body: unknown) {
     }
   }
 
+  const nextTotal = Number(total.toFixed(2))
+  const nextPaidAmount = order.forma_pagamento === 'avista' ? nextTotal : Number(order.pagamento_parcial)
+
   const { data: updatedOrder, error: updatedOrderError } = await supabase
     .from('pedidos')
     .update({
-      total: Number(total.toFixed(2)),
+      total: nextTotal,
+      pagamento_parcial: nextPaidAmount,
       updated_at: now,
     })
     .eq('id', orderId)
-    .select('id, cliente_nome, forma_pagamento, total, usuario_nome, created_at, updated_at')
+    .select(orderSelectFields)
     .single()
 
   if (updatedOrderError) {

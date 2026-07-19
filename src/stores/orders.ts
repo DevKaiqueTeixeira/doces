@@ -1,8 +1,9 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 
-import { addItemsToOrder, closeOrder, createOrder, fetchOrders } from '../services/orders'
-import type { CreateOrderPayload, CreatedOrder, UpdateOrderItemsPayload } from '../types/orders'
+import { addItemsToOrder, closeOrder, createOrder, fetchOrders, payOrderPartially } from '../services/orders'
+import type { CreateOrderPayload, CreatedOrder, PartialOrderPaymentPayload, UpdateOrderItemsPayload } from '../types/orders'
+import { getOrderPendingAmount, getOrderReceivedAmount } from '../utils/order-payment'
 
 function sortOrders(orders: CreatedOrder[]) {
   return [...orders].sort(
@@ -21,15 +22,11 @@ export const useOrdersStore = defineStore('orders', () => {
   const errorMessage = ref('')
 
   const openTotal = computed(() =>
-    items.value
-      .filter((order) => order.formaPagamento === 'aberto')
-      .reduce((sum, order) => sum + order.total, 0),
+    items.value.reduce((sum, order) => sum + getOrderPendingAmount(order), 0),
   )
 
   const receivedTotal = computed(() =>
-    items.value
-      .filter((order) => order.formaPagamento === 'avista')
-      .reduce((sum, order) => sum + order.total, 0),
+    items.value.reduce((sum, order) => sum + getOrderReceivedAmount(order), 0),
   )
 
   async function loadOrders(token: string) {
@@ -99,6 +96,26 @@ export const useOrdersStore = defineStore('orders', () => {
     }
   }
 
+  async function receiveExistingOrderPartialPayment(
+    token: string,
+    orderId: string,
+    payload: PartialOrderPaymentPayload,
+  ) {
+    closingId.value = orderId
+    errorMessage.value = ''
+
+    try {
+      const updatedOrder = await payOrderPartially(token, orderId, payload)
+      upsertOrder(updatedOrder)
+      return updatedOrder
+    } catch (error) {
+      errorMessage.value = error instanceof Error ? error.message : 'Falha ao receber pagamento parcial.'
+      throw error
+    } finally {
+      closingId.value = ''
+    }
+  }
+
   async function appendOrderItems(token: string, orderId: string, payload: UpdateOrderItemsPayload) {
     updatingId.value = orderId
     errorMessage.value = ''
@@ -125,6 +142,7 @@ export const useOrdersStore = defineStore('orders', () => {
     loading,
     loadOrders,
     openTotal,
+    receiveExistingOrderPartialPayment,
     receivedTotal,
     saving,
     updatingId,

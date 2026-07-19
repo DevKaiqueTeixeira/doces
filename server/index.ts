@@ -58,11 +58,16 @@ type PedidoRow = {
   cliente_nome: string
   forma_pagamento: 'aberto' | 'avista'
   total: number
+  pagamento_parcial: number
   usuario_nome: string
   created_at: string
   updated_at: string
   pedido_itens?: PedidoItemRow[]
 }
+
+const orderSelectFields = 'id, cliente_nome, forma_pagamento, total, pagamento_parcial, usuario_nome, created_at, updated_at'
+const orderWithItemsSelect = `${orderSelectFields}, pedido_itens(id, produto_id, produto_nome, quantidade, preco_unitario, subtotal)`
+const concurrentOrderUpdateMessage = 'O pedido foi atualizado por outra operacao. Recarregue a tela e tente novamente.'
 
 function getAuthTokenSecret() {
   const secret = process.env.AUTH_TOKEN_SECRET ?? process.env.SUPABASE_SECRET_KEY
@@ -198,6 +203,7 @@ function formatPedido(pedido: {
   cliente_nome: string
   forma_pagamento: 'aberto' | 'avista'
   total: number
+  pagamento_parcial: number
   created_at: string
   usuario_nome?: string
   updated_at?: string
@@ -208,6 +214,7 @@ function formatPedido(pedido: {
     clienteNome: pedido.cliente_nome,
     formaPagamento: pedido.forma_pagamento,
     total: Number(pedido.total),
+    pagamentoParcial: Number(pedido.pagamento_parcial ?? 0),
     createdAt: pedido.created_at,
     updatedAt: pedido.updated_at,
     usuarioNome: pedido.usuario_nome ?? '',
@@ -242,6 +249,25 @@ function parseOrderItemsPayload(body: Request['body']) {
 
   return {
     itens: normalizedItems,
+  }
+}
+
+function parseOrderPartialPaymentPayload(body: Request['body']) {
+  const rawValue = body?.valorRecebido
+  const valorRecebido =
+    typeof rawValue === 'number'
+      ? rawValue
+      : typeof rawValue === 'string'
+        ? Number(rawValue.trim().replace(',', '.'))
+        : Number.NaN
+  const normalizedAmount = Number.isFinite(valorRecebido) ? Number(valorRecebido.toFixed(2)) : Number.NaN
+
+  if (!Number.isFinite(valorRecebido) || normalizedAmount <= 0) {
+    throw new Error('Informe um valor valido para o pagamento parcial.')
+  }
+
+  return {
+    valorRecebido: normalizedAmount,
   }
 }
 
@@ -514,11 +540,12 @@ app.post('/pedidos', requireAuth, async (request: AuthenticatedRequest, response
         cliente_nome: payload.clienteNome,
         forma_pagamento: payload.formaPagamento,
         total,
+        pagamento_parcial: payload.formaPagamento === 'avista' ? total : 0,
         usuario_id: authUser.id,
         usuario_nome: authUser.nome,
         updated_at: now,
       })
-      .select('id, cliente_nome, forma_pagamento, total, usuario_nome, created_at, updated_at')
+      .select(orderSelectFields)
       .single()
 
     if (orderError) {
@@ -553,9 +580,7 @@ app.get('/pedidos', requireAuth, async (_request: AuthenticatedRequest, response
     const supabase = getSupabaseAdmin()
     const { data, error } = await supabase
       .from('pedidos')
-      .select(
-        'id, cliente_nome, forma_pagamento, total, usuario_nome, created_at, updated_at, pedido_itens(id, produto_id, produto_nome, quantidade, preco_unitario, subtotal)',
-      )
+      .select(orderWithItemsSelect)
       .order('created_at', { ascending: false })
 
     if (error) {
@@ -575,18 +600,35 @@ app.get('/pedidos', requireAuth, async (_request: AuthenticatedRequest, response
 app.put('/pedidos/:id/encerrar', requireAuth, async (request: AuthenticatedRequest, response: Response) => {
   try {
     const supabase = getSupabaseAdmin()
+    const { data: currentOrder, error: currentOrderError } = await supabase
+      .from('pedidos')
+      .select(orderSelectFields)
+      .eq('id', request.params.id)
+      .single()
+
+    if (currentOrderError) {
+      throw currentOrderError
+    }
+
     const { data, error } = await supabase
       .from('pedidos')
       .update({
         forma_pagamento: 'avista',
+        pagamento_parcial: Number(currentOrder.total),
         updated_at: new Date().toISOString(),
       })
       .eq('id', request.params.id)
-      .select('id, cliente_nome, forma_pagamento, total, usuario_nome, created_at, updated_at')
-      .single()
+      .eq('forma_pagamento', currentOrder.forma_pagamento)
+      .eq('pagamento_parcial', currentOrder.pagamento_parcial)
+      .select(orderSelectFields)
+      .maybeSingle()
 
     if (error) {
       throw error
+    }
+
+    if (!data) {
+      throw new Error(concurrentOrderUpdateMessage)
     }
 
     response.json({
@@ -599,6 +641,66 @@ app.put('/pedidos/:id/encerrar', requireAuth, async (request: AuthenticatedReque
   }
 })
 
+app.put('/pedidos/:id/pagamento-parcial', requireAuth, async (request: AuthenticatedRequest, response: Response) => {
+  try {
+    const payload = parseOrderPartialPaymentPayload(request.body)
+    const supabase = getSupabaseAdmin()
+    const pedidoId = request.params.id
+    const { data: currentOrder, error: currentOrderError } = await supabase
+      .from('pedidos')
+      .select(orderSelectFields)
+      .eq('id', pedidoId)
+      .single()
+
+    if (currentOrderError) {
+      throw currentOrderError
+    }
+
+    const total = Number(currentOrder.total)
+    const paidAmount = Number(currentOrder.pagamento_parcial)
+
+    if (currentOrder.forma_pagamento === 'avista' || paidAmount >= total) {
+      throw new Error('O pedido ja foi recebido integralmente.')
+    }
+
+    const remainingAmount = Number((total - paidAmount).toFixed(2))
+
+    if (payload.valorRecebido > remainingAmount) {
+      throw new Error('O pagamento parcial nao pode ser maior que o valor restante do pedido.')
+    }
+
+    const nextPaidAmount = Number((paidAmount + payload.valorRecebido).toFixed(2))
+    const { data, error } = await supabase
+      .from('pedidos')
+      .update({
+        forma_pagamento: nextPaidAmount >= total ? 'avista' : 'aberto',
+        pagamento_parcial: nextPaidAmount,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', pedidoId)
+      .eq('forma_pagamento', currentOrder.forma_pagamento)
+      .eq('pagamento_parcial', currentOrder.pagamento_parcial)
+      .select(orderSelectFields)
+      .maybeSingle()
+
+    if (error) {
+      throw error
+    }
+
+    if (!data) {
+      throw new Error(concurrentOrderUpdateMessage)
+    }
+
+    response.json({
+      pedido: formatPedido(data),
+    })
+  } catch (error) {
+    response.status(400).json({
+      message: error instanceof Error ? error.message : 'Falha ao registrar pagamento parcial.',
+    })
+  }
+})
+
 app.put('/pedidos/:id/itens', requireAuth, async (request: AuthenticatedRequest, response: Response) => {
   try {
     const payload = parseOrderItemsPayload(request.body)
@@ -607,7 +709,7 @@ app.put('/pedidos/:id/itens', requireAuth, async (request: AuthenticatedRequest,
 
     const { data: order, error: orderError } = await supabase
       .from('pedidos')
-      .select('id, cliente_nome, forma_pagamento, total, usuario_nome, created_at, updated_at')
+      .select(orderSelectFields)
       .eq('id', pedidoId)
       .single()
 
@@ -701,14 +803,18 @@ app.put('/pedidos/:id/itens', requireAuth, async (request: AuthenticatedRequest,
       }
     }
 
+    const nextTotal = Number(total.toFixed(2))
+    const nextPaidAmount = order.forma_pagamento === 'avista' ? nextTotal : Number(order.pagamento_parcial)
+
     const { data: updatedOrder, error: updatedOrderError } = await supabase
       .from('pedidos')
       .update({
-        total: Number(total.toFixed(2)),
+        total: nextTotal,
+        pagamento_parcial: nextPaidAmount,
         updated_at: now,
       })
       .eq('id', pedidoId)
-      .select('id, cliente_nome, forma_pagamento, total, usuario_nome, created_at, updated_at')
+      .select(orderSelectFields)
       .single()
 
     if (updatedOrderError) {
