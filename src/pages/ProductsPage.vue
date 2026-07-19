@@ -69,8 +69,12 @@
 
     <QDialog v-model="dialogOpen" persistent>
       <QCard flat class="product-dialog">
-        <QCardSection>
+        <QCardSection class="product-dialog__header">
+          <span class="product-dialog__eyebrow">Produto</span>
           <h2>{{ dialogTitle }}</h2>
+          <p>
+            {{ editingProductId ? 'Atualize as informacoes do produto com clareza.' : 'Preencha os dados para cadastrar um novo produto.' }}
+          </p>
         </QCardSection>
 
         <QCardSection>
@@ -359,10 +363,44 @@ async function handleLogout() {
   justify-content: center;
 }
 
-.product-dialog h2 {
-  margin: 0;
-  color: #3b0764;
+.product-dialog__header {
+  display: grid;
+  gap: 8px;
+  justify-items: center;
   text-align: center;
+  padding-bottom: 8px;
+}
+
+.product-dialog__eyebrow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(124, 58, 237, 0.08);
+  color: var(--app-primary-strong, #6d28d9);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.product-dialog__header h2 {
+  margin: 0;
+  color: var(--app-title, #170f26);
+  font-family: var(--app-font-display, Inter, system-ui, sans-serif);
+  font-size: clamp(1.55rem, 4vw, 2rem);
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  line-height: 1.08;
+}
+
+.product-dialog__header p {
+  margin: 0;
+  max-width: 320px;
+  color: var(--app-text-soft, #6d6580);
+  font-size: 0.94rem;
+  line-height: 1.6;
 }
 
 .products-table__actions {
