@@ -121,6 +121,7 @@
                     flat
                     color="primary"
                     icon="add"
+                    class="orders-table__icon-button orders-table__icon-button--add"
                     aria-label="Adicionar itens ao pedido"
                     :disable="props.row.formaPagamento !== 'aberto' || closingId === props.row.id || updatingId === props.row.id"
                     @click="openAddModal(props.row)"
@@ -130,8 +131,9 @@
                     round
                     dense
                     flat
-                    color="accent"
+                    color="warning"
                     icon="chat"
+                    class="orders-table__icon-button orders-table__icon-button--charge"
                     aria-label="Cobrar cliente"
                     :disable="props.row.formaPagamento !== 'aberto'"
                     @click="openChargeModal(props.row)"
@@ -143,6 +145,7 @@
                     flat
                     color="positive"
                     icon="check"
+                    class="orders-table__icon-button orders-table__icon-button--receive"
                     aria-label="Receber pagamento"
                     :loading="closingId === props.row.id"
                     :disable="props.row.formaPagamento !== 'aberto' || updatingId === props.row.id"
@@ -396,11 +399,11 @@
             <QBtn
               round
               unelevated
-              color="primary"
-              text-color="white"
+              color="white"
+              text-color="warning"
               icon="share"
               aria-label="Compartilhar"
-              class="charge-dialog__icon-action"
+              class="charge-dialog__icon-action charge-dialog__icon-action--share"
               :disable="!canShareMessage"
               @click="handleShareChargeMessage"
             >
@@ -1045,6 +1048,24 @@ async function handleLogout() {
   gap: 6px;
 }
 
+.orders-table__icon-button {
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(124, 58, 237, 0.08);
+  box-shadow: 0 8px 18px rgba(124, 58, 237, 0.08);
+}
+
+.orders-table__icon-button--add {
+  background: rgba(124, 58, 237, 0.1);
+}
+
+.orders-table__icon-button--charge {
+  background: rgba(245, 158, 11, 0.14);
+}
+
+.orders-table__icon-button--receive {
+  background: rgba(34, 197, 94, 0.12);
+}
+
 .order-dialog {
   width: min(100vw - 24px, 560px);
 }
@@ -1270,6 +1291,12 @@ async function handleLogout() {
   background: white;
   border: 1px solid rgba(196, 181, 253, 0.8);
   box-shadow: none;
+}
+
+.charge-dialog__icon-action--share {
+  border: 1px solid rgba(245, 158, 11, 0.24);
+  background: linear-gradient(135deg, #fffdf7 0%, #fff7d6 100%);
+  box-shadow: 0 14px 28px rgba(245, 158, 11, 0.18);
 }
 
 .order-dialog__content {

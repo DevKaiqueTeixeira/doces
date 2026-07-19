@@ -24,8 +24,11 @@ app.use(Quasar, {
   config: {
     brand: {
       primary: '#7c3aed',
-      secondary: '#22d3ee',
-      accent: '#f97316',
+      secondary: '#a78bfa',
+      accent: '#0f766e',
+      positive: '#16a34a',
+      negative: '#e11d48',
+      warning: '#d97706',
     },
   },
 })

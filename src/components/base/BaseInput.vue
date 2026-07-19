@@ -2,6 +2,7 @@
   <QInput
     :model-value="modelValue"
     outlined
+    stack-label
     :label="label"
     :type="currentType"
     :autocomplete="autocomplete"
@@ -94,13 +95,13 @@ const currentType = computed(() => {
 <style scoped>
 .base-input {
   width: 100%;
-  font-family: var(--login-sans-font, Inter, system-ui, sans-serif);
+  font-family: var(--app-font-sans, Inter, system-ui, sans-serif);
 }
 
 .base-input__field {
-  color: #3b0764;
+  color: var(--app-text, #271d39);
   font-weight: 600;
-  font-family: var(--login-sans-font, Inter, system-ui, sans-serif);
+  font-family: var(--app-font-sans, Inter, system-ui, sans-serif);
 }
 
 .base-input__action {
@@ -114,30 +115,70 @@ const currentType = computed(() => {
 }
 
 .base-input:deep(.q-field__control) {
-  border-radius: 18px;
-  min-height: 58px;
+  border-radius: 20px;
+  min-height: 60px;
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: var(--app-shadow-sm);
 }
 
-.base-input:deep(.q-field__control::before),
-.base-input:deep(.q-field__control::after) {
+.base-input:deep(.q-field--outlined .q-field__control::before) {
+  border: 1px solid var(--app-border-strong, rgba(124, 58, 237, 0.24));
+}
+
+.base-input:deep(.q-field--outlined .q-field__control::after) {
   display: none;
+}
+
+.base-input:deep(.q-field--focused .q-field__control) {
+  box-shadow: 0 0 0 4px var(--app-ring, rgba(124, 58, 237, 0.14));
+}
+
+.base-input:deep(.q-field--focused.q-field--outlined .q-field__control::before) {
+  border-color: rgba(124, 58, 237, 0.38);
+}
+
+.base-input:deep(.q-field--error .q-field__control::before) {
+  border-color: rgba(225, 29, 72, 0.42);
+}
+
+.base-input:deep(.q-field__control-container) {
+  height: 100%;
+}
+
+.base-input:deep(.q-field__marginal) {
+  height: 60px;
+  align-items: center;
 }
 
 .base-input:deep(.q-field__native),
 .base-input:deep(.q-field__input) {
-  padding-top: 18px;
+  min-height: 100%;
+  color: var(--app-text, #271d39);
+  font-size: 0.96rem;
+  font-weight: 600;
+}
+
+.base-input:deep(.q-field--stack-label .q-field__native),
+.base-input:deep(.q-field--stack-label .q-field__input) {
+  padding-top: 12px;
 }
 
 .base-input:deep(.q-field__label) {
-  color: #7e22ce;
+  color: var(--app-text-muted, #968daa);
+  font-size: 0.76rem;
   font-weight: 600;
-  font-family: var(--login-sans-font, Inter, system-ui, sans-serif);
-  letter-spacing: -0.01em;
+  font-family: var(--app-font-sans, Inter, system-ui, sans-serif);
+  letter-spacing: 0.02em;
 }
 
 .base-input:deep(.q-placeholder) {
-  color: #a78bfa;
+  color: var(--app-text-muted, #968daa);
   opacity: 1;
-  font-family: var(--login-sans-font, Inter, system-ui, sans-serif);
+  font-family: var(--app-font-sans, Inter, system-ui, sans-serif);
+}
+
+.base-input:deep(.q-field__prepend .q-icon),
+.base-input:deep(.q-field__append .q-icon) {
+  color: var(--app-primary, #7c3aed);
 }
 </style>

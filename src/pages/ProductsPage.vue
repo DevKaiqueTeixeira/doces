@@ -41,8 +41,9 @@
                     flat
                     round
                     dense
-                    color="primary"
+                    color="positive"
                     icon="edit"
+                    class="products-table__icon-button products-table__icon-button--edit"
                     aria-label="Editar produto"
                     @click="openEditDialog(props.row)"
                   />
@@ -53,6 +54,7 @@
                     dense
                     color="negative"
                     icon="delete"
+                    class="products-table__icon-button products-table__icon-button--delete"
                     aria-label="Excluir produto"
                     :loading="deletingId === props.row.id"
                     @click="handleDeleteProduct(props.row.id)"
@@ -367,6 +369,20 @@ async function handleLogout() {
   display: flex;
   justify-content: flex-end;
   gap: 6px;
+}
+
+.products-table__icon-button {
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(124, 58, 237, 0.08);
+  box-shadow: 0 8px 18px rgba(124, 58, 237, 0.08);
+}
+
+.products-table__icon-button--edit {
+  background: rgba(34, 197, 94, 0.12);
+}
+
+.products-table__icon-button--delete {
+  background: rgba(225, 29, 72, 0.1);
 }
 
 .product-dialog {

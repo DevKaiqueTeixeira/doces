@@ -1,6 +1,6 @@
 <template>
   <QDialog :model-value="modelValue" persistent @update:model-value="emit('update:modelValue', $event)">
-    <QCard flat class="confirm-dialog">
+    <QCard flat class="app-dialog-card confirm-dialog">
       <QCardSection class="confirm-dialog__content">
         <div class="confirm-dialog__icon-shell">
           <QIcon :name="icon" :color="iconColor" size="30px" />
@@ -102,9 +102,6 @@ const toneButtonVariant = computed(() => {
 <style scoped>
 .confirm-dialog {
   width: min(100vw - 24px, 420px);
-  border-radius: 26px;
-  background: rgba(255, 255, 255, 0.98);
-  box-shadow: 0 22px 48px rgba(76, 29, 149, 0.16);
 }
 
 .confirm-dialog__content {
@@ -112,39 +109,43 @@ const toneButtonVariant = computed(() => {
   gap: 16px;
   justify-items: center;
   text-align: center;
-  padding: 28px 22px 12px;
+  padding: 32px 26px 14px;
 }
 
 .confirm-dialog__icon-shell {
-  width: 56px;
-  height: 56px;
+  width: 62px;
+  height: 62px;
   display: grid;
   place-items: center;
   border-radius: 50%;
-  background: #f5edff;
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.1), rgba(255, 255, 255, 0.92));
+  border: 1px solid rgba(124, 58, 237, 0.12);
 }
 
 .confirm-dialog__copy {
   display: grid;
-  gap: 8px;
+  gap: 10px;
 }
 
 .confirm-dialog__copy h2 {
   margin: 0;
-  color: #3b0764;
-  font-size: 1.3rem;
+  color: var(--app-title, #170f26);
+  font-family: var(--app-font-display, Inter, system-ui, sans-serif);
+  font-size: 1.22rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
 }
 
 .confirm-dialog__copy p {
   margin: 0;
-  color: #6b21a8;
+  color: var(--app-text-soft, #6d6580);
   line-height: 1.6;
 }
 
 .confirm-dialog__actions {
   display: grid;
   gap: 12px;
-  padding: 10px 22px 24px;
+  padding: 8px 26px 28px;
 }
 
 @media (min-width: 640px) {

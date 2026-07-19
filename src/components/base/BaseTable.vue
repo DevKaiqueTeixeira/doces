@@ -65,9 +65,12 @@ withDefaults(
 }
 
 .base-table {
-  border-radius: 20px;
+  border-radius: 24px;
   overflow: hidden;
-  font-family: var(--login-sans-font, Inter, system-ui, sans-serif);
+  border: 1px solid var(--app-border, rgba(124, 58, 237, 0.12));
+  background: rgba(255, 255, 255, 0.84);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  font-family: var(--app-font-sans, Inter, system-ui, sans-serif);
 }
 
 .base-table__empty-overlay {
@@ -75,8 +78,8 @@ withDefaults(
   inset: 46px 0 0;
   display: grid;
   place-items: center;
-  background: rgba(255, 255, 255, 0.98);
-  border-top: 1px solid rgba(196, 181, 253, 0.35);
+  background: rgba(255, 255, 255, 0.96);
+  border-top: 1px solid var(--app-border, rgba(124, 58, 237, 0.12));
 }
 
 .base-table__state {
@@ -84,28 +87,35 @@ withDefaults(
   display: grid;
   place-items: center;
   gap: 8px;
-  color: #6b21a8;
+  color: var(--app-text-soft, #6d6580);
   text-align: center;
   padding: 20px;
 }
 
 .base-table:deep(.q-table thead th) {
-  color: #6b21a8;
-  font-size: 0.78rem;
+  color: var(--app-text-muted, #968daa);
+  font-size: 0.74rem;
   font-weight: 800;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  background: #fcf8ff;
+  background: rgba(124, 58, 237, 0.04);
+  border-bottom: 1px solid rgba(124, 58, 237, 0.08);
 }
 
 .base-table:deep(.q-table tbody td) {
-  color: #3b0764;
-  font-size: 0.94rem;
+  color: var(--app-text, #271d39);
+  font-size: 0.93rem;
   font-weight: 600;
+  border-color: rgba(124, 58, 237, 0.06);
+  transition: background-color 0.18s ease;
 }
 
 .base-table:deep(.q-table tbody tr:nth-child(even)) {
-  background: rgba(250, 245, 255, 0.82);
+  background: rgba(124, 58, 237, 0.02);
+}
+
+.base-table:deep(.q-table tbody tr:hover) {
+  background: rgba(124, 58, 237, 0.05);
 }
 
 @media (max-width: 640px) {
