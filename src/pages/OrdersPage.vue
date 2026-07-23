@@ -483,7 +483,7 @@ const paymentOrderId = ref('')
 const paymentAction = ref<'full' | 'partial' | ''>('')
 const searchTerm = ref<string | null>('')
 const statusFilter = ref<OrderStatusFilter>('todos')
-const ownerFilter = ref('todos')
+const ownerFilter = ref(normalizeOwnerValue(user.value?.nome) || 'todos')
 const editableQuantities = ref<Record<string, number>>({})
 const baseQuantities = ref<Record<string, number>>({})
 const partialPaymentValue = ref('')
@@ -501,7 +501,7 @@ const ownerOptions = computed(() => {
   ])
 
   for (const order of items.value) {
-    const normalizedName = order.usuarioNome.trim().toLowerCase()
+    const normalizedName = normalizeOwnerValue(order.usuarioNome)
 
     if (!normalizedName || owners.has(normalizedName)) {
       continue
@@ -622,7 +622,7 @@ const filteredOrders = computed(() => {
       return false
     }
 
-    if (ownerFilter.value !== 'todos' && order.usuarioNome.trim().toLowerCase() !== ownerFilter.value) {
+    if (ownerFilter.value !== 'todos' && normalizeOwnerValue(order.usuarioNome) !== ownerFilter.value) {
       return false
     }
 
@@ -700,6 +700,10 @@ function formatOwnerLabel(value: string) {
   }
 
   return normalizedValue.charAt(0).toUpperCase() + normalizedValue.slice(1)
+}
+
+function normalizeOwnerValue(value?: string | null) {
+  return value?.trim().toLowerCase() ?? ''
 }
 
 function getBaseQuantity(productId: string) {
