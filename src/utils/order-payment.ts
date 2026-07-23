@@ -3,6 +3,10 @@ type OrderPaymentSnapshot = {
   pagamentoParcial: number
 }
 
+type OrderOwnerSnapshot = OrderPaymentSnapshot & {
+  usuarioNome: string
+}
+
 function roundCurrency(value: number) {
   return Number(value.toFixed(2))
 }
@@ -19,4 +23,26 @@ export function getOrderPendingAmount(order: OrderPaymentSnapshot) {
 
 export function hasPartialPayment(order: OrderPaymentSnapshot) {
   return getOrderReceivedAmount(order) > 0 && getOrderPendingAmount(order) > 0
+}
+
+export function normalizeOrderOwnerName(value?: string | null) {
+  return value?.trim().toLowerCase() ?? ''
+}
+
+export function getOrderFinancialTotalsForOwner(orders: OrderOwnerSnapshot[], ownerName?: string | null) {
+  const normalizedOwnerName = normalizeOrderOwnerName(ownerName)
+  const ownerOrders = normalizedOwnerName
+    ? orders.filter((order) => normalizeOrderOwnerName(order.usuarioNome) === normalizedOwnerName)
+    : orders
+
+  return ownerOrders.reduce(
+    (totals, order) => ({
+      openTotal: roundCurrency(totals.openTotal + getOrderPendingAmount(order)),
+      receivedTotal: roundCurrency(totals.receivedTotal + getOrderReceivedAmount(order)),
+    }),
+    {
+      openTotal: 0,
+      receivedTotal: 0,
+    },
+  )
 }

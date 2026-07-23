@@ -2,8 +2,8 @@
   <QLayout view="lHh Lpr lFf" class="home-layout">
     <AppNavBar
       active="home"
-      :open-total="openTotal"
-      :received-total="receivedTotal"
+      :open-total="ownerFinancialTotals.openTotal"
+      :received-total="ownerFinancialTotals.receivedTotal"
       @navigate="handleNavigate"
       @logout="handleLogout"
     />
@@ -121,6 +121,7 @@ import { useAuthStore } from '../stores/auth'
 import { useOrdersStore } from '../stores/orders'
 import { useProductsStore } from '../stores/products'
 import type { OrderPaymentMode } from '../types/orders'
+import { getOrderFinancialTotalsForOwner } from '../utils/order-payment'
 
 const authStore = useAuthStore()
 const ordersStore = useOrdersStore()
@@ -128,8 +129,8 @@ const productsStore = useProductsStore()
 const $q = useQuasar()
 const router = useRouter()
 
-const { token } = storeToRefs(authStore)
-const { errorMessage: orderErrorMessage, openTotal, receivedTotal, saving } = storeToRefs(ordersStore)
+const { token, user } = storeToRefs(authStore)
+const { errorMessage: orderErrorMessage, items: orders, saving } = storeToRefs(ordersStore)
 const { errorMessage: productsErrorMessage, items: products, loading: productsLoading } = storeToRefs(productsStore)
 
 const clienteNome = ref('')
@@ -157,6 +158,8 @@ const selectedItemsCount = computed(() => {
 const totalAmount = computed(() => {
   return selectedItems.value.reduce((sum, item) => sum + item.preco * item.quantidade, 0)
 })
+
+const ownerFinancialTotals = computed(() => getOrderFinancialTotalsForOwner(orders.value, user.value?.nome))
 
 const canSubmit = computed(() => {
   return Boolean(clienteNome.value.trim()) && selectedItems.value.length > 0 && !saving.value

@@ -2,8 +2,8 @@
   <QLayout view="lHh Lpr lFf" class="products-layout">
     <AppNavBar
       active="produtos"
-      :open-total="openTotal"
-      :received-total="receivedTotal"
+      :open-total="ownerFinancialTotals.openTotal"
+      :received-total="ownerFinancialTotals.receivedTotal"
       @navigate="handleNavigate"
       @logout="handleLogout"
     />
@@ -151,6 +151,7 @@ import { useAuthStore } from '../stores/auth'
 import { useOrdersStore } from '../stores/orders'
 import { useProductsStore } from '../stores/products'
 import type { Product } from '../types/products'
+import { getOrderFinancialTotalsForOwner } from '../utils/order-payment'
 import { useConfirmDialog } from '../utils/use-confirm-dialog'
 
 const columns = [
@@ -165,8 +166,8 @@ const productsStore = useProductsStore()
 const $q = useQuasar()
 const router = useRouter()
 
-const { token } = storeToRefs(authStore)
-const { openTotal, receivedTotal } = storeToRefs(ordersStore)
+const { token, user } = storeToRefs(authStore)
+const { items: orders } = storeToRefs(ordersStore)
 const { deletingId, errorMessage, items, loading, saving } = storeToRefs(productsStore)
 
 const confirmDialog = useConfirmDialog()
@@ -197,6 +198,8 @@ const dialogSubmitLabel = computed(() => (editingProductId.value ? 'Salvar alter
 const canSubmitProductForm = computed(() => {
   return !saving.value && Boolean(productForm.value.nome.trim()) && Boolean(productForm.value.preco.trim())
 })
+
+const ownerFinancialTotals = computed(() => getOrderFinancialTotalsForOwner(orders.value, user.value?.nome))
 
 watch(errorMessage, (message) => {
   if (!message) {

@@ -43,7 +43,7 @@
       </div>
 
       <div class="app-nav__utility">
-        <div class="app-nav__progress-chip" aria-label="Resumo financeiro dos pedidos">
+        <div class="app-nav__progress-chip app-nav__progress-chip--desktop" aria-label="Resumo financeiro dos pedidos">
           <div class="app-nav__progress-copy">
             <span class="app-nav__progress-value app-nav__progress-value--open">{{ formatCurrency(openTotal) }}</span>
             <div class="app-nav__progress-track">
@@ -54,6 +54,23 @@
           </div>
 
           <small class="app-nav__progress-total">Total {{ formatCurrency(totalAmount) }}</small>
+        </div>
+
+        <div class="app-nav__summary-card app-nav__summary-card--mobile" aria-label="Resumo financeiro dos pedidos">
+          <div class="app-nav__summary-item app-nav__summary-item--success">
+            <small>Recebido</small>
+            <strong>{{ formatCurrency(receivedTotal) }}</strong>
+          </div>
+
+          <div class="app-nav__summary-item app-nav__summary-item--open">
+            <small>A receber</small>
+            <strong>{{ formatCurrency(openTotal) }}</strong>
+          </div>
+
+          <div class="app-nav__summary-item">
+            <small>Total</small>
+            <strong>{{ formatCurrency(totalAmount) }}</strong>
+          </div>
         </div>
 
         <QBtn flat round dense icon="logout" aria-label="Sair" class="app-nav__logout" @click="emit('logout')" />
@@ -196,6 +213,59 @@ function formatCurrency(value: number) {
   box-shadow: var(--app-shadow-sm);
 }
 
+.app-nav__summary-card {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: none;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  padding: 12px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.82);
+  border: 1px solid rgba(124, 58, 237, 0.08);
+  box-shadow: var(--app-shadow-sm);
+}
+
+.app-nav__summary-item {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(124, 58, 237, 0.05);
+}
+
+.app-nav__summary-item small {
+  color: var(--app-text-muted, #968daa);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.app-nav__summary-item strong {
+  color: var(--app-title, #170f26);
+  font-size: 0.9rem;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.app-nav__summary-item--success {
+  background: rgba(34, 197, 94, 0.1);
+}
+
+.app-nav__summary-item--success strong {
+  color: #166534;
+}
+
+.app-nav__summary-item--open {
+  background: rgba(245, 158, 11, 0.14);
+}
+
+.app-nav__summary-item--open strong {
+  color: #c2410c;
+}
+
 .app-nav__progress-copy {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
@@ -327,22 +397,25 @@ function formatCurrency(value: number) {
     font-size: 0.76rem;
   }
 
-  .app-nav__progress-chip {
-    padding: 10px 12px;
-  }
-
-  .app-nav__progress-copy {
-    grid-template-columns: 1fr;
-    gap: 8px;
-  }
-
-  .app-nav__progress-value,
-  .app-nav__progress-total {
-    text-align: center;
-  }
-
   .app-nav__utility {
     align-items: stretch;
+  }
+
+  .app-nav__progress-chip--desktop {
+    display: none;
+  }
+
+  .app-nav__summary-card--mobile {
+    display: grid;
+  }
+
+  .app-nav__summary-item {
+    padding: 10px;
+  }
+
+  .app-nav__summary-item small,
+  .app-nav__summary-item strong {
+    text-align: center;
   }
 
   .app-nav__logout {

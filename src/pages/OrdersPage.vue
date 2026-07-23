@@ -2,8 +2,8 @@
   <QLayout view="lHh Lpr lFf" class="orders-layout">
     <AppNavBar
       active="pedidos"
-      :open-total="openTotal"
-      :received-total="receivedTotal"
+      :open-total="ownerFinancialTotals.openTotal"
+      :received-total="ownerFinancialTotals.receivedTotal"
       @navigate="handleNavigate"
       @logout="handleLogout"
     />
@@ -430,7 +430,13 @@ import { useOrdersStore } from '../stores/orders'
 import { useProductsStore } from '../stores/products'
 import type { CreatedOrder } from '../types/orders'
 import { buildOrderChargeMessage, resolveOrderChargePixConfig } from '../utils/order-charge'
-import { getOrderPendingAmount, getOrderReceivedAmount, hasPartialPayment } from '../utils/order-payment'
+import {
+  getOrderFinancialTotalsForOwner,
+  getOrderPendingAmount,
+  getOrderReceivedAmount,
+  hasPartialPayment,
+  normalizeOrderOwnerName,
+} from '../utils/order-payment'
 
 type EditableOrderProduct = {
   id: string
@@ -470,7 +476,7 @@ const productsStore = useProductsStore()
 const $q = useQuasar()
 const router = useRouter()
 const { token, user } = storeToRefs(authStore)
-const { closingId, errorMessage, items, loading, openTotal, receivedTotal, saving, updatingId } = storeToRefs(ordersStore)
+const { closingId, errorMessage, items, loading, saving, updatingId } = storeToRefs(ordersStore)
 const { items: products } = storeToRefs(productsStore)
 
 const chargeDialogOpen = ref(false)
@@ -483,7 +489,7 @@ const paymentOrderId = ref('')
 const paymentAction = ref<'full' | 'partial' | ''>('')
 const searchTerm = ref<string | null>('')
 const statusFilter = ref<OrderStatusFilter>('todos')
-const ownerFilter = ref(normalizeOwnerValue(user.value?.nome) || 'todos')
+const ownerFilter = ref(normalizeOrderOwnerName(user.value?.nome) || 'todos')
 const editableQuantities = ref<Record<string, number>>({})
 const baseQuantities = ref<Record<string, number>>({})
 const partialPaymentValue = ref('')
@@ -501,7 +507,7 @@ const ownerOptions = computed(() => {
   ])
 
   for (const order of items.value) {
-    const normalizedName = normalizeOwnerValue(order.usuarioNome)
+    const normalizedName = normalizeOrderOwnerName(order.usuarioNome)
 
     if (!normalizedName || owners.has(normalizedName)) {
       continue
@@ -560,6 +566,8 @@ const editableTotal = computed(() => {
 const canSaveItems = computed(() => {
   return Boolean(editingOrder.value) && !saving.value && editableTotal.value > 0
 })
+
+const ownerFinancialTotals = computed(() => getOrderFinancialTotalsForOwner(items.value, user.value?.nome))
 
 const chargePixConfig = computed(() => resolveOrderChargePixConfig(user.value?.nome))
 
@@ -622,7 +630,7 @@ const filteredOrders = computed(() => {
       return false
     }
 
-    if (ownerFilter.value !== 'todos' && normalizeOwnerValue(order.usuarioNome) !== ownerFilter.value) {
+    if (ownerFilter.value !== 'todos' && normalizeOrderOwnerName(order.usuarioNome) !== ownerFilter.value) {
       return false
     }
 
@@ -700,10 +708,6 @@ function formatOwnerLabel(value: string) {
   }
 
   return normalizedValue.charAt(0).toUpperCase() + normalizedValue.slice(1)
-}
-
-function normalizeOwnerValue(value?: string | null) {
-  return value?.trim().toLowerCase() ?? ''
 }
 
 function getBaseQuantity(productId: string) {
