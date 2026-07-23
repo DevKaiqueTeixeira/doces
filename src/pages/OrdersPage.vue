@@ -429,7 +429,7 @@ import { useAuthStore } from '../stores/auth'
 import { useOrdersStore } from '../stores/orders'
 import { useProductsStore } from '../stores/products'
 import type { CreatedOrder } from '../types/orders'
-import { buildOrderChargeMessage } from '../utils/order-charge'
+import { buildOrderChargeMessage, resolveOrderChargePixConfig } from '../utils/order-charge'
 import { getOrderPendingAmount, getOrderReceivedAmount, hasPartialPayment } from '../utils/order-payment'
 
 type EditableOrderProduct = {
@@ -469,10 +469,7 @@ const ordersStore = useOrdersStore()
 const productsStore = useProductsStore()
 const $q = useQuasar()
 const router = useRouter()
-const pixKey = import.meta.env.VITE_PIX_KEY ?? ''
-const pixReceiverName = import.meta.env.VITE_PIX_RECEIVER_NAME ?? ''
-
-const { token } = storeToRefs(authStore)
+const { token, user } = storeToRefs(authStore)
 const { closingId, errorMessage, items, loading, openTotal, receivedTotal, saving, updatingId } = storeToRefs(ordersStore)
 const { items: products } = storeToRefs(productsStore)
 
@@ -564,12 +561,18 @@ const canSaveItems = computed(() => {
   return Boolean(editingOrder.value) && !saving.value && editableTotal.value > 0
 })
 
+const chargePixConfig = computed(() => resolveOrderChargePixConfig(user.value?.nome))
+
 const chargeMessage = computed(() => {
   if (!chargeOrder.value) {
     return ''
   }
 
-  return buildOrderChargeMessage(chargeOrder.value, pixKey, pixReceiverName)
+  return buildOrderChargeMessage(
+    chargeOrder.value,
+    chargePixConfig.value.key,
+    chargePixConfig.value.receiverName,
+  )
 })
 
 const canShareMessage = computed(() => typeof navigator !== 'undefined' && typeof navigator.share === 'function')
