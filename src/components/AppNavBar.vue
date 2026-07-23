@@ -366,6 +366,10 @@ function formatCurrency(value: number) {
   }
 
   .app-nav__brand {
+    width: 100%;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
     gap: 6px;
   }
 
@@ -376,16 +380,17 @@ function formatCurrency(value: number) {
   }
 
   .app-nav__brand-totals {
-    gap: 4px;
+    gap: 3px;
     margin-left: 0;
+    justify-content: flex-end;
   }
 
   .app-nav__brand-total {
-    min-width: 68px;
+    min-width: 64px;
   }
 
   .app-nav__brand-total:deep(.app-financial-card) {
-    padding: 5px 6px;
+    padding: 5px;
     border-radius: 9px;
   }
 
