@@ -366,21 +366,22 @@ function formatCurrency(value: number) {
   }
 
   .app-nav__brand {
-    gap: 8px;
+    gap: 6px;
   }
 
   .app-nav__brand-copy {
     gap: 4px;
+    flex: 0 1 auto;
     min-width: 0;
   }
 
   .app-nav__brand-totals {
-    gap: 6px;
-    margin-left: 4px;
+    gap: 4px;
+    margin-left: 0;
   }
 
   .app-nav__brand-total {
-    min-width: 74px;
+    min-width: 68px;
   }
 
   .app-nav__brand-total:deep(.app-financial-card) {
@@ -398,11 +399,11 @@ function formatCurrency(value: number) {
   }
 
   .app-nav__brand-script {
-    font-size: 1.4rem;
+    font-size: 1.28rem;
   }
 
   .app-nav__brand-meta strong {
-    font-size: 0.76rem;
+    font-size: 0.72rem;
   }
 
   .app-nav__brand-meta small {
