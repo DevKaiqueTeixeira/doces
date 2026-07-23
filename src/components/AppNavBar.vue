@@ -11,6 +11,21 @@
             <small>Painel interno</small>
           </div>
         </div>
+
+        <div class="app-nav__brand-totals" aria-label="Resumo financeiro geral">
+          <AppFinancialCard
+            label="A receber geral"
+            :value="formatCurrency(overallOpenTotal)"
+            tone="open"
+            class="app-nav__brand-total"
+          />
+          <AppFinancialCard
+            label="Recebido geral"
+            :value="formatCurrency(overallReceivedTotal)"
+            tone="success"
+            class="app-nav__brand-total"
+          />
+        </div>
       </div>
 
       <div class="app-nav__links">
@@ -57,20 +72,9 @@
         </div>
 
         <div class="app-nav__summary-card app-nav__summary-card--mobile" aria-label="Resumo financeiro dos pedidos">
-          <div class="app-nav__summary-item app-nav__summary-item--success">
-            <small>Recebido</small>
-            <strong>{{ formatCurrency(receivedTotal) }}</strong>
-          </div>
-
-          <div class="app-nav__summary-item app-nav__summary-item--open">
-            <small>A receber</small>
-            <strong>{{ formatCurrency(openTotal) }}</strong>
-          </div>
-
-          <div class="app-nav__summary-item">
-            <small>Total</small>
-            <strong>{{ formatCurrency(totalAmount) }}</strong>
-          </div>
+          <AppFinancialCard label="Recebido" :value="formatCurrency(receivedTotal)" tone="success" />
+          <AppFinancialCard label="A receber" :value="formatCurrency(openTotal)" tone="open" />
+          <AppFinancialCard label="Total Individual" :value="formatCurrency(totalAmount)" />
         </div>
 
         <QBtn flat round dense icon="logout" aria-label="Sair" class="app-nav__logout" @click="emit('logout')" />
@@ -83,6 +87,7 @@
 import { computed } from 'vue'
 import { QBtn, QHeader } from 'quasar'
 
+import AppFinancialCard from './AppFinancialCard.vue'
 import BaseButton from './base/BaseButton.vue'
 
 const props = withDefaults(
@@ -90,10 +95,14 @@ const props = withDefaults(
     active: 'home' | 'produtos' | 'pedidos'
     openTotal?: number
     receivedTotal?: number
+    overallOpenTotal?: number
+    overallReceivedTotal?: number
   }>(),
   {
     openTotal: 0,
     receivedTotal: 0,
+    overallOpenTotal: 0,
+    overallReceivedTotal: 0,
   },
 )
 
@@ -139,6 +148,7 @@ function formatCurrency(value: number) {
   display: flex;
   align-items: center;
   gap: 12px;
+  flex-wrap: nowrap;
 }
 
 .app-nav__brand-mark {
@@ -188,6 +198,33 @@ function formatCurrency(value: number) {
   font-weight: 600;
 }
 
+.app-nav__brand-total {
+  min-width: 118px;
+  flex: 0 0 auto;
+}
+
+.app-nav__brand-totals {
+  display: flex;
+  gap: 8px;
+  flex-wrap: nowrap;
+  align-items: center;
+}
+
+.app-nav__brand-total:deep(.app-financial-card) {
+  gap: 3px;
+  padding: 8px 10px;
+  border-radius: 12px;
+}
+
+.app-nav__brand-total:deep(.app-financial-card small) {
+  font-size: 0.58rem;
+  letter-spacing: 0.04em;
+}
+
+.app-nav__brand-total:deep(.app-financial-card strong) {
+  font-size: 0.78rem;
+}
+
 .app-nav__links {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -224,46 +261,6 @@ function formatCurrency(value: number) {
   background: rgba(255, 255, 255, 0.82);
   border: 1px solid rgba(124, 58, 237, 0.08);
   box-shadow: var(--app-shadow-sm);
-}
-
-.app-nav__summary-item {
-  min-width: 0;
-  display: grid;
-  gap: 4px;
-  padding: 10px 12px;
-  border-radius: 14px;
-  background: rgba(124, 58, 237, 0.05);
-}
-
-.app-nav__summary-item small {
-  color: var(--app-text-muted, #968daa);
-  font-size: 0.68rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
-.app-nav__summary-item strong {
-  color: var(--app-title, #170f26);
-  font-size: 0.9rem;
-  font-weight: 800;
-  line-height: 1.2;
-}
-
-.app-nav__summary-item--success {
-  background: rgba(34, 197, 94, 0.1);
-}
-
-.app-nav__summary-item--success strong {
-  color: #166534;
-}
-
-.app-nav__summary-item--open {
-  background: rgba(245, 158, 11, 0.14);
-}
-
-.app-nav__summary-item--open strong {
-  color: #c2410c;
 }
 
 .app-nav__progress-copy {
@@ -357,7 +354,17 @@ function formatCurrency(value: number) {
   }
 
   .app-nav__brand {
-    justify-content: center;
+    justify-content: flex-start;
+    flex-wrap: nowrap;
+  }
+
+  .app-nav__brand-total {
+    min-width: 0;
+  }
+
+  .app-nav__brand-totals {
+    justify-content: flex-start;
+    flex-wrap: nowrap;
   }
 
   .app-nav__links {
@@ -375,16 +382,44 @@ function formatCurrency(value: number) {
     gap: 12px;
   }
 
-  .app-nav__brand-copy {
+  .app-nav__brand {
     gap: 8px;
   }
 
+  .app-nav__brand-copy {
+    gap: 6px;
+    min-width: 0;
+  }
+
+  .app-nav__brand-totals {
+    gap: 6px;
+    margin-left: auto;
+  }
+
+  .app-nav__brand-total {
+    min-width: 82px;
+  }
+
+  .app-nav__brand-total:deep(.app-financial-card) {
+    padding: 6px 8px;
+    border-radius: 10px;
+  }
+
+  .app-nav__brand-total:deep(.app-financial-card small) {
+    font-size: 0.48rem;
+    letter-spacing: 0.03em;
+  }
+
+  .app-nav__brand-total:deep(.app-financial-card strong) {
+    font-size: 0.68rem;
+  }
+
   .app-nav__brand-script {
-    font-size: 1.8rem;
+    font-size: 1.55rem;
   }
 
   .app-nav__brand-meta strong {
-    font-size: 0.92rem;
+    font-size: 0.82rem;
   }
 
   .app-nav__brand-meta small {
@@ -407,15 +442,6 @@ function formatCurrency(value: number) {
 
   .app-nav__summary-card--mobile {
     display: grid;
-  }
-
-  .app-nav__summary-item {
-    padding: 10px;
-  }
-
-  .app-nav__summary-item small,
-  .app-nav__summary-item strong {
-    text-align: center;
   }
 
   .app-nav__logout {

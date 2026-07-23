@@ -4,6 +4,8 @@
       active="home"
       :open-total="ownerFinancialTotals.openTotal"
       :received-total="ownerFinancialTotals.receivedTotal"
+      :overall-open-total="overallFinancialTotals.openTotal"
+      :overall-received-total="overallFinancialTotals.receivedTotal"
       @navigate="handleNavigate"
       @logout="handleLogout"
     />
@@ -160,6 +162,7 @@ const totalAmount = computed(() => {
 })
 
 const ownerFinancialTotals = computed(() => getOrderFinancialTotalsForOwner(orders.value, user.value?.nome))
+const overallFinancialTotals = computed(() => getOrderFinancialTotalsForOwner(orders.value))
 
 const canSubmit = computed(() => {
   return Boolean(clienteNome.value.trim()) && selectedItems.value.length > 0 && !saving.value

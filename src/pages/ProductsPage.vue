@@ -4,6 +4,8 @@
       active="produtos"
       :open-total="ownerFinancialTotals.openTotal"
       :received-total="ownerFinancialTotals.receivedTotal"
+      :overall-open-total="overallFinancialTotals.openTotal"
+      :overall-received-total="overallFinancialTotals.receivedTotal"
       @navigate="handleNavigate"
       @logout="handleLogout"
     />
@@ -200,6 +202,7 @@ const canSubmitProductForm = computed(() => {
 })
 
 const ownerFinancialTotals = computed(() => getOrderFinancialTotalsForOwner(orders.value, user.value?.nome))
+const overallFinancialTotals = computed(() => getOrderFinancialTotalsForOwner(orders.value))
 
 watch(errorMessage, (message) => {
   if (!message) {

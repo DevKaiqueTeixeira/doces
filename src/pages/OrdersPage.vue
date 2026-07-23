@@ -4,6 +4,8 @@
       active="pedidos"
       :open-total="ownerFinancialTotals.openTotal"
       :received-total="ownerFinancialTotals.receivedTotal"
+      :overall-open-total="overallFinancialTotals.openTotal"
+      :overall-received-total="overallFinancialTotals.receivedTotal"
       @navigate="handleNavigate"
       @logout="handleLogout"
     />
@@ -568,6 +570,7 @@ const canSaveItems = computed(() => {
 })
 
 const ownerFinancialTotals = computed(() => getOrderFinancialTotalsForOwner(items.value, user.value?.nome))
+const overallFinancialTotals = computed(() => getOrderFinancialTotalsForOwner(items.value))
 
 const chargePixConfig = computed(() => resolveOrderChargePixConfig(user.value?.nome))
 
