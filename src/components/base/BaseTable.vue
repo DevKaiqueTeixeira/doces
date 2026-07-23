@@ -1,14 +1,18 @@
 <template>
   <div class="base-table-shell" :class="{ 'base-table-shell--empty': !loading && rows.length === 0 }">
     <QTable
+      v-model:pagination="pagination"
       flat
       bordered
-      hide-bottom
       hide-no-data
+      :hide-bottom="loading || rows.length === 0"
       :rows="rows"
       :columns="columns"
       :row-key="rowKey"
       :loading="loading"
+      :rows-per-page-options="normalizedRowsPerPageOptions"
+      rows-per-page-label="Itens por pagina"
+      :pagination-label="formatPaginationLabel"
       class="base-table"
     >
       <template #loading>
@@ -33,9 +37,17 @@
 </template>
 
 <script setup lang="ts">
+import { computed, ref, watch } from 'vue'
 import { QIcon, QSpinner, QTable, type QTableColumn } from 'quasar'
 
-withDefaults(
+type TablePagination = {
+  sortBy: string | null
+  descending: boolean
+  page: number
+  rowsPerPage: number
+}
+
+const props = withDefaults(
   defineProps<{
     rows: unknown[]
     columns: QTableColumn[]
@@ -44,6 +56,8 @@ withDefaults(
     loadingText?: string
     emptyText?: string
     emptyIcon?: string
+    initialRowsPerPage?: number
+    rowsPerPageOptions?: number[]
   }>(),
   {
     rowKey: 'id',
@@ -51,8 +65,58 @@ withDefaults(
     loadingText: 'Carregando dados...',
     emptyText: 'Nenhum item cadastrado ainda.',
     emptyIcon: 'inventory_2',
+    initialRowsPerPage: 10,
+    rowsPerPageOptions: () => [5, 10, 20, 50],
   },
 )
+
+const pagination = ref<TablePagination>({
+  sortBy: null,
+  descending: false,
+  page: 1,
+  rowsPerPage: props.initialRowsPerPage,
+})
+
+const normalizedRowsPerPageOptions = computed(() => {
+  return [...new Set([props.initialRowsPerPage, ...props.rowsPerPageOptions])].sort((left, right) => left - right)
+})
+
+watch(
+  () => props.initialRowsPerPage,
+  (rowsPerPage) => {
+    pagination.value = {
+      ...pagination.value,
+      page: 1,
+      rowsPerPage,
+    }
+  },
+)
+
+watch(
+  [() => props.rows.length, () => pagination.value.rowsPerPage],
+  ([rowCount, rowsPerPage]) => {
+    if (rowsPerPage === 0) {
+      pagination.value = {
+        ...pagination.value,
+        page: 1,
+      }
+      return
+    }
+
+    const maxPage = Math.max(1, Math.ceil(rowCount / rowsPerPage))
+
+    if (pagination.value.page > maxPage) {
+      pagination.value = {
+        ...pagination.value,
+        page: maxPage,
+      }
+    }
+  },
+)
+
+function formatPaginationLabel(firstRowIndex: number, endRowIndex: number, totalRowsNumber: number) {
+  return `${firstRowIndex}-${endRowIndex} de ${totalRowsNumber}`
+}
 </script>
 
 <style scoped>
@@ -118,6 +182,24 @@ withDefaults(
   background: rgba(124, 58, 237, 0.05);
 }
 
+.base-table:deep(.q-table__bottom) {
+  flex-wrap: wrap;
+  gap: 10px 14px;
+  padding: 14px 18px;
+  color: var(--app-text-soft, #6d6580);
+  border-top: 1px solid rgba(124, 58, 237, 0.08);
+  background: rgba(255, 255, 255, 0.92);
+}
+
+.base-table:deep(.q-table__bottom-item) {
+  font-size: 0.84rem;
+  font-weight: 600;
+}
+
+.base-table:deep(.q-table__bottom .q-btn) {
+  color: var(--app-primary, #7c3aed);
+}
+
 @media (max-width: 640px) {
   .base-table__empty-overlay {
     inset: 40px 0 0;
@@ -130,6 +212,15 @@ withDefaults(
 
   .base-table:deep(.q-table tbody td) {
     font-size: 0.86rem;
+  }
+
+  .base-table:deep(.q-table__bottom) {
+    justify-content: center;
+    padding: 12px 14px;
+  }
+
+  .base-table:deep(.q-table__bottom-item) {
+    font-size: 0.8rem;
   }
 }
 </style>
