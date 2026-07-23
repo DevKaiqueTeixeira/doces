@@ -2,8 +2,6 @@
   <QHeader class="app-nav" elevated>
     <div class="app-nav__inner app-page-shell">
       <div class="app-nav__brand" aria-label="Jessy Doces">
-        <div class="app-nav__brand-mark">JD</div>
-
         <div class="app-nav__brand-copy">
           <span class="app-nav__brand-script">Jessy</span>
           <div class="app-nav__brand-meta">
@@ -151,25 +149,10 @@ function formatCurrency(value: number) {
   flex-wrap: nowrap;
 }
 
-.app-nav__brand-mark {
-  width: 46px;
-  height: 46px;
-  display: grid;
-  place-items: center;
-  border-radius: 16px;
-  background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
-  color: white;
-  font-family: var(--app-font-display, Inter, system-ui, sans-serif);
-  font-size: 0.98rem;
-  font-weight: 700;
-  letter-spacing: -0.04em;
-  box-shadow: 0 16px 28px rgba(124, 58, 237, 0.2);
-}
-
 .app-nav__brand-copy {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
 }
 
 .app-nav__brand-script {
@@ -199,7 +182,7 @@ function formatCurrency(value: number) {
 }
 
 .app-nav__brand-total {
-  min-width: 118px;
+  min-width: 104px;
   flex: 0 0 auto;
 }
 
@@ -212,17 +195,17 @@ function formatCurrency(value: number) {
 
 .app-nav__brand-total:deep(.app-financial-card) {
   gap: 3px;
-  padding: 8px 10px;
-  border-radius: 12px;
+  padding: 6px 8px;
+  border-radius: 10px;
 }
 
 .app-nav__brand-total:deep(.app-financial-card small) {
-  font-size: 0.58rem;
-  letter-spacing: 0.04em;
+  font-size: 0.5rem;
+  letter-spacing: 0.03em;
 }
 
 .app-nav__brand-total:deep(.app-financial-card strong) {
-  font-size: 0.78rem;
+  font-size: 0.7rem;
 }
 
 .app-nav__links {
@@ -387,39 +370,39 @@ function formatCurrency(value: number) {
   }
 
   .app-nav__brand-copy {
-    gap: 6px;
+    gap: 4px;
     min-width: 0;
   }
 
   .app-nav__brand-totals {
     gap: 6px;
-    margin-left: auto;
+    margin-left: 4px;
   }
 
   .app-nav__brand-total {
-    min-width: 82px;
+    min-width: 74px;
   }
 
   .app-nav__brand-total:deep(.app-financial-card) {
-    padding: 6px 8px;
-    border-radius: 10px;
+    padding: 5px 6px;
+    border-radius: 9px;
   }
 
   .app-nav__brand-total:deep(.app-financial-card small) {
-    font-size: 0.48rem;
-    letter-spacing: 0.03em;
+    font-size: 0.42rem;
+    letter-spacing: 0.02em;
   }
 
   .app-nav__brand-total:deep(.app-financial-card strong) {
-    font-size: 0.68rem;
+    font-size: 0.62rem;
   }
 
   .app-nav__brand-script {
-    font-size: 1.55rem;
+    font-size: 1.4rem;
   }
 
   .app-nav__brand-meta strong {
-    font-size: 0.82rem;
+    font-size: 0.76rem;
   }
 
   .app-nav__brand-meta small {
